@@ -1,31 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Layout, Typography, Input, Button, Card, Avatar, Space, Tooltip } from 'antd';
-import { SendOutlined, PictureOutlined, FileOutlined, SmileOutlined, RobotOutlined, UserOutlined } from '@ant-design/icons';
-import axios from 'axios';
-import './Chat.css';
+import { Input, Button, Avatar, Typography, Space, Card } from 'antd';
+import { SendOutlined, UserOutlined, RobotOutlined } from '@ant-design/icons';
+import { sendMessage } from '../api/chat';
 
-const { Header, Content } = Layout;
-const { Title } = Typography;
 const { TextArea } = Input;
+const { Text } = Typography;
+
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
 
 const ChatComponent: React.FC = () => {
-  const [messages, setMessages] = useState<Array<{
-    type: 'text';
-    content: { text: string };
-    position: 'left' | 'right';
-  }>>([]);
-  const [inputValue, setInputValue] = useState('');
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // Add welcome message
-    setMessages([{
-      type: 'text',
-      content: { text: '你好！我是AI助手，有什么我可以帮你的吗？' },
-      position: 'left',
-    }]);
-  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -36,36 +26,26 @@ const ChatComponent: React.FC = () => {
   }, [messages]);
 
   const handleSend = async () => {
-    if (inputValue.trim()) {
-      const newMessage = {
-        type: 'text' as const,
-        content: { text: inputValue },
-        position: 'right' as const,
+    if (!input.trim()) return;
+
+    const userMessage: Message = { role: 'user', content: input.trim() };
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setLoading(true);
+
+    try {
+      const response = await sendMessage(input.trim());
+      const assistantMessage: Message = { role: 'assistant', content: response.response };
+      setMessages(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      const errorMessage: Message = { 
+        role: 'assistant', 
+        content: '抱歉，发生了错误，请稍后重试。' 
       };
-
-      setMessages(prev => [...prev, newMessage]);
-      setInputValue('');
-      setLoading(true);
-
-      try {
-        const response = await axios.post('http://localhost:8000/api/chat', {
-          message: inputValue,
-        });
-
-        setMessages(prev => [...prev, {
-          type: 'text',
-          content: { text: response.data.response },
-          position: 'left',
-        }]);
-      } catch (error) {
-        setMessages(prev => [...prev, {
-          type: 'text',
-          content: { text: '抱歉，发生了一些错误，请稍后重试。' },
-          position: 'left',
-        }]);
-      } finally {
-        setLoading(false);
-      }
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -77,70 +57,89 @@ const ChatComponent: React.FC = () => {
   };
 
   return (
-    <Layout className="chat-layout">
-      <Header className="chat-header">
-        <div className="header-content">
-          <Title level={3} className="header-title">
-            <RobotOutlined /> AI 业务咨询平台
-          </Title>
-        </div>
-      </Header>
-      <Content className="chat-content">
-        <Card className="chat-card">
-          <div className="messages-container">
-            {messages.map((msg, index) => (
-              <div
-                key={index}
-                className={`message-wrapper ${msg.position === 'right' ? 'message-right' : 'message-left'}`}
-              >
-                <Space className="message-content">
-                  {msg.position === 'left' && (
-                    <Avatar icon={<RobotOutlined />} className="avatar" />
-                  )}
-                  <div className={`message-bubble ${msg.position}`}>
-                    {msg.content.text}
-                  </div>
-                  {msg.position === 'right' && (
-                    <Avatar icon={<UserOutlined />} className="avatar" />
-                  )}
-                </Space>
+    <Card 
+      style={{ 
+        height: 'calc(100vh - 200px)',
+        display: 'flex',
+        flexDirection: 'column'
+      }}
+      bodyStyle={{ 
+        padding: '24px',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column'
+      }}
+    >
+      <div style={{ 
+        flex: 1, 
+        overflowY: 'auto',
+        marginBottom: '24px',
+        padding: '0 16px'
+      }}>
+        {messages.map((message, index) => (
+          <div
+            key={index}
+            style={{
+              display: 'flex',
+              justifyContent: message.role === 'user' ? 'flex-end' : 'flex-start',
+              marginBottom: '16px',
+            }}
+          >
+            <Space align="start" size={12}>
+              {message.role === 'assistant' && (
+                <Avatar icon={<RobotOutlined />} style={{ backgroundColor: '#1890ff' }} />
+              )}
+              <div className={`message-bubble ${message.role}`}>
+                <Text>{message.content}</Text>
               </div>
-            ))}
-            <div ref={messagesEndRef} />
+              {message.role === 'user' && (
+                <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#52c41a' }} />
+              )}
+            </Space>
           </div>
-          <div className="input-container">
-            <Space.Compact style={{ width: '100%' }}>
-              <Tooltip title="发送图片">
-                <Button icon={<PictureOutlined />} />
-              </Tooltip>
-              <Tooltip title="发送文件">
-                <Button icon={<FileOutlined />} />
-              </Tooltip>
-              <Tooltip title="表情">
-                <Button icon={<SmileOutlined />} />
-              </Tooltip>
-              <TextArea
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="请输入消息..."
-                autoSize={{ minRows: 1, maxRows: 4 }}
-                className="chat-input"
-              />
-              <Button
-                type="primary"
-                icon={<SendOutlined />}
-                onClick={handleSend}
-                loading={loading}
-                className="send-button"
-              >
-                发送
-              </Button>
-            </Space.Compact>
+        ))}
+        {loading && (
+          <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '16px' }}>
+            <Space align="start" size={12}>
+              <Avatar icon={<RobotOutlined />} style={{ backgroundColor: '#1890ff' }} />
+              <div className="message-bubble assistant">
+                <div className="loading-dots">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              </div>
+            </Space>
           </div>
-        </Card>
-      </Content>
-    </Layout>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+      <div style={{ 
+        borderTop: '1px solid #f0f0f0',
+        paddingTop: '16px',
+        display: 'flex',
+        gap: '12px'
+      }}>
+        <TextArea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyPress={handleKeyPress}
+          placeholder="输入消息..."
+          autoSize={{ minRows: 1, maxRows: 4 }}
+          className="chat-input"
+          style={{ flex: 1 }}
+        />
+        <Button
+          type="primary"
+          icon={<SendOutlined />}
+          onClick={handleSend}
+          loading={loading}
+          className="chat-button"
+        >
+          发送
+        </Button>
+      </div>
+    </Card>
   );
 };
 
