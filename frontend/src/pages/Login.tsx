@@ -1,54 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Input, Button, Card, Typography, message, Row, Col, Checkbox } from 'antd';
+import { Form, Input, Button, Typography, message, Row, Col, Checkbox } from 'antd';
 import { UserOutlined, LockOutlined, EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons';
-import React from 'react';
-import { Button, Card, Form, Input, message } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useOrgStore } from '@/stores/OrgStore';
-import { createStyles } from 'antd-style';
-import logo from '@/assets/logo.svg';
+import '@/pages/Login.css';
+// 正确导入图片
+import bankBuilding from '@/assets/bank-building1.jpg';
 
-const useStyle = createStyles(({ token, css }) => ({
-  container: css`
-    width: 100%;
-    height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: ${token.colorBgLayout};
-  `,
-  card: css`
-    width: 400px;
-    padding: 24px;
-    border-radius: 8px;
-    box-shadow: ${token.boxShadow};
-  `,
-  logo: css`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 24px;
-    gap: 8px;
+const { Title, Text } = Typography;
 
-    span {
-      font-size: 20px;
-      font-weight: bold;
-      color: ${token.colorText};
-    }
-  `,
-  form: css`
-    .ant-form-item-label {
-      font-weight: 500;
-    }
-  `,
-}));
+interface LoginForm {
+  orgCode: string;
+  password: string;
+}
 
 const Login: React.FC = () => {
-  const { styles } = useStyle();
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const [remember, setRemember] = useState(false);
   const [bankImageExists, setBankImageExists] = useState(true);
+  
+  // 获取OrgStore中的login函数
+  const login = useOrgStore((state: any) => state.login);
 
   useEffect(() => {
     // 检查银行图片是否存在
@@ -68,24 +41,25 @@ const Login: React.FC = () => {
     
     checkImageExists();
   }, []);
-  const login = useOrgStore((state) => state.login);
 
   const handleSubmit = async (values: LoginForm) => {
     try {
-      const response = await login(values.username, values.password);
-      localStorage.setItem('token', response.token);
-      if (remember) {
-        localStorage.setItem('rememberedUsername', values.username);
+      const success = await login(values.orgCode, values.password);
+      
+      if (success) {
+        if (remember) {
+          localStorage.setItem('rememberedOrgCode', values.orgCode);
+        } else {
+          localStorage.removeItem('rememberedOrgCode');
+        }
+        message.success('登录成功');
+        navigate('/chat');
       } else {
-        localStorage.removeItem('rememberedUsername');
+        message.error('机构号或密码错误');
       }
-  const onFinish = async (values: { orgCode: string; password: string }) => {
-    const success = await login(values.orgCode, values.password);
-    if (success) {
-      message.success('登录成功');
-      navigate('/chat');
-    } else {
-      message.error('机构号或密码错误');
+    } catch (error) {
+      message.error('登录失败，请稍后再试');
+      console.error('Login error:', error);
     }
   };
 
@@ -96,11 +70,10 @@ const Login: React.FC = () => {
   return (
     <div className="login-container">
       <Row className="login-row">
-        <Col span={14} className="login-left">
+        <Col flex="50%" className="login-left">
           <div className="bank-building-container">
             {bankImageExists ? (
               <>
-                <div className="gradient-overlay"></div>
                 <img src={bankBuilding} alt="中国银行大楼" className="bank-building-image" />
               </>
             ) : (
@@ -114,7 +87,7 @@ const Login: React.FC = () => {
             )}
           </div>
         </Col>
-        <Col span={10} className="login-right">
+        <Col flex="50%" className="login-right">
           <div className="login-form-container">
             <div className="login-header">
               <div className="platform-title-container">
@@ -127,13 +100,13 @@ const Login: React.FC = () => {
               name="login"
               onFinish={handleSubmit}
               initialValues={{
-                username: localStorage.getItem('rememberedUsername') || '',
-                remember: !!localStorage.getItem('rememberedUsername')
+                orgCode: localStorage.getItem('rememberedOrgCode') || '',
+                remember: !!localStorage.getItem('rememberedOrgCode')
               }}
               className="login-form"
             >
               <Form.Item
-                name="username"
+                name="orgCode"
                 rules={[{ required: true, message: '请输入机构号' }]}
               >
                 <Input
@@ -194,39 +167,6 @@ const Login: React.FC = () => {
           </div>
         </Col>
       </Row>
-    <div className={styles.container}>
-      <Card className={styles.card}>
-        <div className={styles.logo}>
-          <img src={logo} alt="logo" width={32} height={32} />
-          <span>远程核准线上咨询平台</span>
-        </div>
-        <Form
-          name="login"
-          onFinish={onFinish}
-          className={styles.form}
-          layout="vertical"
-        >
-          <Form.Item
-            label="机构号"
-            name="orgCode"
-            rules={[{ required: true, message: '请输入机构号' }]}
-          >
-            <Input placeholder="请输入机构号" />
-          </Form.Item>
-          <Form.Item
-            label="密码"
-            name="password"
-            rules={[{ required: true, message: '请输入密码' }]}
-          >
-            <Input.Password placeholder="请输入密码" />
-          </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit" block>
-              登录
-            </Button>
-          </Form.Item>
-        </Form>
-      </Card>
     </div>
   );
 };
