@@ -1,13 +1,10 @@
 import {
   CopyOutlined,
   DeleteOutlined,
-  DislikeOutlined,
-  EditOutlined,
   FireOutlined,
   LikeOutlined,
   PlusOutlined,
   QuestionCircleOutlined,
-  ReloadOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
 import {
@@ -20,7 +17,7 @@ import {
   useXChat,
 } from '@ant-design/x';
 import type { BubbleDataType } from '@ant-design/x/es/bubble/BubbleList';
-import { Avatar, Button, Flex, type GetProp, Space, Spin, message } from 'antd';
+import { Button, Flex, type GetProp, Space, Spin, message } from 'antd';
 import { createStyles } from 'antd-style';
 import dayjs from 'dayjs';
 import React, { useEffect, useRef, useState } from 'react';
@@ -31,11 +28,6 @@ const DEFAULT_CONVERSATIONS_ITEMS = [
   {
     key: 'default-0',
     label: '业务咨询',
-    group: '今天',
-  },
-  {
-    key: 'default-1',
-    label: '业务咨询2',
     group: '今天',
   },
   {
@@ -170,7 +162,6 @@ const useStyle = createStyles(({ token, css }) => {
       padding-right: 10px;
     `,
     loadingMessage: css`
-      background-image: linear-gradient(90deg, #ff6b23 0%, #af3cb8 31%, #53b6ff 89%);
       background-size: 100% 2px;
       background-repeat: no-repeat;
       background-position: bottom;
@@ -205,6 +196,8 @@ const Chat: React.FC = () => {
 
   const [inputValue, setInputValue] = useState('');
 
+  const [orgCode, setOrgCode] = useState('36909');
+
   // ==================== Runtime ====================
   const [agent] = useXAgent<BubbleDataType>({
     baseURL: 'https://api.siliconflow.cn/v1/chat/completions',
@@ -218,12 +211,12 @@ const Chat: React.FC = () => {
     requestFallback: (_, { error }) => {
       if (error.name === 'AbortError') {
         return {
-          content: 'Request is aborted',
+          content: '请求被中止',
           role: 'assistant',
         };
       }
       return {
-        content: 'Request failed, please try again!',
+        content: '请求失败，请重试！',
         role: 'assistant',
       };
     },
@@ -255,7 +248,7 @@ const Chat: React.FC = () => {
     if (!val) return;
 
     if (loading) {
-      message.error('Request is in progress, please wait for the request to complete.');
+      message.error('请求进行中，请稍后...');
       return;
     }
 
@@ -309,8 +302,8 @@ const Chat: React.FC = () => {
         activeKey={curConversation}
         onActiveChange={async (val) => {
           abortController.current?.abort();
-          // The abort execution will trigger an asynchronous requestFallback, which may lead to timing issues.
-          // In future versions, the sessionId capability will be added to resolve this problem.
+          // 执行 abort 会触发异步的 requestFallback，可能会导致定时问题。
+          // 在未来的版本中，将添加 sessionId 能力来解决这个问题。
           setTimeout(() => {
             setCurConversation(val);
             setMessages(messageHistory?.[val] || []);
@@ -320,11 +313,11 @@ const Chat: React.FC = () => {
         styles={{ item: { padding: '0 8px' } }}
         menu={(conversation) => ({
           items: [
-            {
-              label: 'Rename',
-              key: 'rename',
-              icon: <EditOutlined />,
-            },
+            // {
+            //   label: 'Rename',
+            //   key: 'rename',
+            //   icon: <EditOutlined />,
+            // },
             {
               label: 'Delete',
               key: 'delete',
@@ -334,8 +327,8 @@ const Chat: React.FC = () => {
                 const newList = conversations.filter((item) => item.key !== conversation.key);
                 const newKey = newList?.[0]?.key;
                 setConversations(newList);
-                // The delete operation modifies curConversation and triggers onActiveChange, so it needs to be executed with a delay to ensure it overrides correctly at the end.
-                // This feature will be fixed in a future version.
+                // 删除操作会修改 curConversation 并触发 onActiveChange，所以需要延迟执行以确保在最后正确覆盖。
+                // 这个功能将在未来的版本中修复。
                 setTimeout(() => {
                   if (conversation.key === curConversation) {
                     setCurConversation(newKey);
@@ -351,7 +344,7 @@ const Chat: React.FC = () => {
       <div className={styles.siderFooter}>
         {/* <Avatar size={24} /> */}
         <img src={logo} alt="bot" width={24} height={24} />
-        <span>36909</span>
+        <span>{orgCode}</span>
         <Button type="text" icon={<QuestionCircleOutlined />} />
       </div>
     </div>
@@ -372,17 +365,30 @@ const Chat: React.FC = () => {
           roles={{
             assistant: {
               placement: 'start',
+              avatar: <img src={bot} alt="bot" width={24} height={24} />,
               footer: (
-                <div style={{ display: 'flex' }}>
-                  {/* <Button type="text" size="small" icon={<ReloadOutlined />} /> */}
-                  <Button type="text" size="small" icon={<CopyOutlined />} />
-                  <Button type="text" size="small" icon={<LikeOutlined />} />
-                  {/* <Button type="text" size="small" icon={<DislikeOutlined />} /> */}
+                <div>
+                  <div style={{ fontSize: 12, color: '#000000a6', marginLeft: 5 }}>本平台仅供内部使用，严禁发送任何客户信息/涉密信息/敏感信息</div>
+                  <div style={{ display: 'flex' }}>
+                    {/* <Button type="text" size="small" icon={<ReloadOutlined />} /> */}
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<CopyOutlined />}
+                      title="复制"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(i.message.content);
+                      }}
+                    />
+                    <Button type="text" size="small" icon={<LikeOutlined />} title="满意" />
+                    {/* <Button type="text" size="small" icon={<DislikeOutlined />} /> */}
+                  </div>
                 </div>
               ),
               loadingRender: () => <Spin size="small" />,
             },
-            user: { placement: 'end' },
+            user: { placement: 'end', avatar: <img src={logo} alt="logo" width={24} height={24} /> },
           }}
         />
       ) : (
