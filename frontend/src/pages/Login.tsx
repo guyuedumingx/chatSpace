@@ -1,19 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import { Form, Input, Button, Card, Typography, message, Row, Col, Checkbox } from 'antd';
 import { UserOutlined, LockOutlined, EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons';
+import React from 'react';
+import { Button, Card, Form, Input, message } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { login } from '../api/user';
-import './Login.css'; // 添加CSS文件引用，后面会创建
-import bankBuilding from '../assets/bank-building1.jpg';
+import { useOrgStore } from '@/stores/OrgStore';
+import { createStyles } from 'antd-style';
+import logo from '@/assets/logo.svg';
 
-const { Title, Text } = Typography;
+const useStyle = createStyles(({ token, css }) => ({
+  container: css`
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: ${token.colorBgLayout};
+  `,
+  card: css`
+    width: 400px;
+    padding: 24px;
+    border-radius: 8px;
+    box-shadow: ${token.boxShadow};
+  `,
+  logo: css`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    gap: 8px;
 
-interface LoginForm {
-  username: string;
-  password: string;
-}
+    span {
+      font-size: 20px;
+      font-weight: bold;
+      color: ${token.colorText};
+    }
+  `,
+  form: css`
+    .ant-form-item-label {
+      font-weight: 500;
+    }
+  `,
+}));
 
 const Login: React.FC = () => {
+  const { styles } = useStyle();
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const [remember, setRemember] = useState(false);
@@ -37,6 +68,7 @@ const Login: React.FC = () => {
     
     checkImageExists();
   }, []);
+  const login = useOrgStore((state) => state.login);
 
   const handleSubmit = async (values: LoginForm) => {
     try {
@@ -47,10 +79,13 @@ const Login: React.FC = () => {
       } else {
         localStorage.removeItem('rememberedUsername');
       }
+  const onFinish = async (values: { orgCode: string; password: string }) => {
+    const success = await login(values.orgCode, values.password);
+    if (success) {
       message.success('登录成功');
-      navigate('/');
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : '登录失败');
+      navigate('/chat');
+    } else {
+      message.error('机构号或密码错误');
     }
   };
 
@@ -159,6 +194,39 @@ const Login: React.FC = () => {
           </div>
         </Col>
       </Row>
+    <div className={styles.container}>
+      <Card className={styles.card}>
+        <div className={styles.logo}>
+          <img src={logo} alt="logo" width={32} height={32} />
+          <span>远程核准线上咨询平台</span>
+        </div>
+        <Form
+          name="login"
+          onFinish={onFinish}
+          className={styles.form}
+          layout="vertical"
+        >
+          <Form.Item
+            label="机构号"
+            name="orgCode"
+            rules={[{ required: true, message: '请输入机构号' }]}
+          >
+            <Input placeholder="请输入机构号" />
+          </Form.Item>
+          <Form.Item
+            label="密码"
+            name="password"
+            rules={[{ required: true, message: '请输入密码' }]}
+          >
+            <Input.Password placeholder="请输入密码" />
+          </Form.Item>
+          <Form.Item>
+            <Button type="primary" htmlType="submit" block>
+              登录
+            </Button>
+          </Form.Item>
+        </Form>
+      </Card>
     </div>
   );
 };

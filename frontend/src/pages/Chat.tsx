@@ -3,8 +3,8 @@ import {
   DeleteOutlined,
   FireOutlined,
   LikeOutlined,
+  LogoutOutlined,
   PlusOutlined,
-  QuestionCircleOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
 import {
@@ -19,63 +19,12 @@ import {
 import type { BubbleDataType } from '@ant-design/x/es/bubble/BubbleList';
 import { Button, Flex, type GetProp, Space, Spin, message } from 'antd';
 import { createStyles } from 'antd-style';
-import dayjs from 'dayjs';
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import logo from '@/assets/logo.svg';
 import bot from '@/assets/bot.svg';
-
-const DEFAULT_CONVERSATIONS_ITEMS = [
-  {
-    key: 'default-0',
-    label: '业务咨询',
-    group: '今天',
-  },
-  {
-    key: 'default-2',
-    label: '业务咨询3',
-    group: '昨天',
-  },
-];
-
-const HOT_TOPICS = {
-  key: '1',
-  label: <><FireOutlined style={{ color: '#f93a4a', fontWeight: 700, marginRight: 8 }} />热点咨询</>,
-  children: [
-    {
-      key: '1-1',
-      description: 'What has Ant Design X upgraded?',
-      icon: <span style={{ color: '#f93a4a', fontWeight: 700 }}>1</span>,
-    },
-    {
-      key: '1-2',
-      description: 'New AGI Hybrid Interface',
-      icon: <span style={{ color: '#ff6565', fontWeight: 700 }}>2</span>,
-    },
-    {
-      key: '1-3',
-      description: 'What components are in Ant Design X?',
-      icon: <span style={{ color: '#ff8f1f', fontWeight: 700 }}>3</span>,
-    },
-    {
-      key: '1-4',
-      description: 'Come and discover the new design paradigm of the AI era.',
-      icon: <span style={{ color: '#00000040', fontWeight: 700 }}>4</span>,
-    },
-    {
-      key: '1-5',
-      description: 'How to quickly install and import components?',
-      icon: <span style={{ color: '#00000040', fontWeight: 700 }}>5</span>,
-    },
-  ],
-};
-
-const SENDER_PROMPTS: GetProp<typeof Prompts, 'items'> = [
-  {
-    key: '1',
-    description: '热点咨询',
-    icon: <FireOutlined />,
-  }
-];
+import { useOrgStore } from '@/stores/OrgStore';
+import { chatApi } from '@/api/chat';
 
 const useStyle = createStyles(({ token, css }) => {
   return {
@@ -186,17 +135,16 @@ const useStyle = createStyles(({ token, css }) => {
 
 const Chat: React.FC = () => {
   const { styles } = useStyle();
+  const navigate = useNavigate();
   const abortController = useRef<AbortController>(null);
+  const { orgCode, orgName, logout } = useOrgStore();
 
   // ==================== State ====================
   const [messageHistory, setMessageHistory] = useState<Record<string, any>>({});
-
-  const [conversations, setConversations] = useState(DEFAULT_CONVERSATIONS_ITEMS);
-  const [curConversation, setCurConversation] = useState(DEFAULT_CONVERSATIONS_ITEMS[0].key);
-
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [curConversation, setCurConversation] = useState('');
   const [inputValue, setInputValue] = useState('');
-
-  const [orgCode, setOrgCode] = useState('36909');
+  const [hotTopics, setHotTopics] = useState<any>([]);
 
   // ==================== Runtime ====================
   const [agent] = useXAgent<BubbleDataType>({
@@ -258,6 +206,36 @@ const Chat: React.FC = () => {
     });
   };
 
+  const handleLogout = () => {
+    logout();
+    message.success('已退出登录');
+    navigate('/login');
+  };
+
+  // ==================== Effects ====================
+  useEffect(() => {
+    const initData = async () => {
+      const [conversationsData, hotTopicsData] = await Promise.all([
+        chatApi.getConversations(),
+        chatApi.getHotTopics(),
+      ]);
+      setConversations(conversationsData as any[]);
+      setHotTopics(hotTopicsData);
+      if (conversationsData && (conversationsData as any[]).length > 0) {
+        setCurConversation((conversationsData as any[])[0].key);
+        const history = await chatApi.getMessageHistory((conversationsData as any[])[0].key);
+        setMessages(history as any);
+      }
+    };
+    initData();
+  }, []);
+
+  useEffect(() => {
+    if (messages?.length) {
+      chatApi.saveMessageHistory(curConversation, messages);
+    }
+  }, [messages, curConversation]);
+
   // ==================== Nodes ====================
   const chatSider = (
     <div className={styles.sider}>
@@ -275,17 +253,10 @@ const Chat: React.FC = () => {
 
       {/* 🌟 添加会话 */}
       <Button
-        onClick={() => {
-          const now = dayjs().valueOf().toString();
-          setConversations([
-            {
-              key: now,
-              label: `业务咨询 ${conversations.length + 1}`,
-              group: '今天',
-            },
-            ...conversations,
-          ]);
-          setCurConversation(now);
+        onClick={async () => {
+          const newConversation = await chatApi.createConversation(conversations.length+1);
+          setConversations([newConversation, ...conversations]);
+          setCurConversation(newConversation.key);
           setMessages([]);
         }}
         type="link"
@@ -302,37 +273,31 @@ const Chat: React.FC = () => {
         activeKey={curConversation}
         onActiveChange={async (val) => {
           abortController.current?.abort();
-          // 执行 abort 会触发异步的 requestFallback，可能会导致定时问题。
-          // 在未来的版本中，将添加 sessionId 能力来解决这个问题。
-          setTimeout(() => {
+          setTimeout(async () => {
             setCurConversation(val);
-            setMessages(messageHistory?.[val] || []);
+            const history = await chatApi.getMessageHistory(val);
+            setMessages(history as any);
           }, 100);
         }}
         groupable
         styles={{ item: { padding: '0 8px' } }}
         menu={(conversation) => ({
           items: [
-            // {
-            //   label: 'Rename',
-            //   key: 'rename',
-            //   icon: <EditOutlined />,
-            // },
             {
-              label: 'Delete',
+              label: '删除',
               key: 'delete',
               icon: <DeleteOutlined />,
               danger: true,
-              onClick: () => {
+              onClick: async () => {
+                await chatApi.deleteConversation(conversation.key);
                 const newList = conversations.filter((item) => item.key !== conversation.key);
                 const newKey = newList?.[0]?.key;
                 setConversations(newList);
-                // 删除操作会修改 curConversation 并触发 onActiveChange，所以需要延迟执行以确保在最后正确覆盖。
-                // 这个功能将在未来的版本中修复。
-                setTimeout(() => {
+                setTimeout(async () => {
                   if (conversation.key === curConversation) {
                     setCurConversation(newKey);
-                    setMessages(messageHistory?.[newKey] || []);
+                    const history = await chatApi.getMessageHistory(newKey);
+                    setMessages(history as any);
                   }
                 }, 200);
               },
@@ -344,8 +309,8 @@ const Chat: React.FC = () => {
       <div className={styles.siderFooter}>
         {/* <Avatar size={24} /> */}
         <img src={logo} alt="bot" width={24} height={24} />
-        <span>{orgCode}</span>
-        <Button type="text" icon={<QuestionCircleOutlined />} />
+        <span>{orgName}</span>
+        <Button type="text" icon={<LogoutOutlined />} onClick={handleLogout} />
       </div>
     </div>
   );
@@ -367,11 +332,12 @@ const Chat: React.FC = () => {
             assistant: {
               placement: 'start',
               avatar: <img src={bot} alt="bot" width={24} height={24} />,
-              footer: (
+              footer: (message: any) => (
                 <div>
-                  <div style={{ fontSize: 12, color: '#000000a6', marginLeft: 5 }}>本平台仅供内部使用，严禁发送任何客户信息/涉密信息/敏感信息</div>
+                  <div style={{ fontSize: 12, color: '#000000a6', marginLeft: 5 }}>
+                    本平台仅供内部使用，严禁发送任何客户信息/涉密信息/敏感信息
+                  </div>
                   <div style={{ display: 'flex' }}>
-                    {/* <Button type="text" size="small" icon={<ReloadOutlined />} /> */}
                     <Button
                       type="text"
                       size="small"
@@ -379,11 +345,13 @@ const Chat: React.FC = () => {
                       title="复制"
                       onClick={(e) => {
                         e.stopPropagation();
-                        navigator.clipboard.writeText(i.message.content);
+                        if (message?.content) {
+                          navigator.clipboard.writeText(message.content);
+                          message.success('复制成功');
+                        }
                       }}
                     />
                     <Button type="text" size="small" icon={<LikeOutlined />} title="满意" />
-                    {/* <Button type="text" size="small" icon={<DislikeOutlined />} /> */}
                   </div>
                 </div>
               ),
@@ -400,13 +368,24 @@ const Chat: React.FC = () => {
             title="你好，欢迎使用远程核准线上咨询平台"
             description="本平台仅供内部使用，严禁发送任何客户信息/涉密信息/敏感信息"
           />
+          <div style={{ fontSize: 16, fontWeight: 500, color: '#000000e0' }}>
+            <FireOutlined style={{ marginRight: 8 }} />
+            <span>热点咨询</span>
+          </div>
           <Flex gap={16}>
             <Prompts
-              items={[HOT_TOPICS]}
+              items={hotTopics?.map((item: any, index: number) => ({
+                key: item.key,
+                description: item.description,
+                icon: <>{index + 1}</>,
+                children: item.children || [],
+              }))}
+              wrap
               styles={{
                 list: { height: '100%', width: '100%' },
                 item: {
-                  flex: 1,
+                  flex: 'none',
+                  width: 'calc(50% - 6px)',
                   backgroundColor: '#f0f0f0',
                   borderRadius: 12,
                   border: 'none',
@@ -425,16 +404,6 @@ const Chat: React.FC = () => {
   );
   const chatSender = (
     <>
-      {/* 🌟 提示词 */}
-      <Prompts
-        items={SENDER_PROMPTS}
-        onItemClick={(info) => {
-          onSubmit(info.data.description as string);
-        }}
-        styles={{ item: { padding: '6px 12px' } }}
-        className={styles.senderPrompt}
-      />
-      {/* 🌟 输入框 */}
       <Sender
         value={inputValue}
         onSubmit={() => {
@@ -466,17 +435,6 @@ const Chat: React.FC = () => {
     </>
   );
 
-  useEffect(() => {
-    // history mock
-    if (messages?.length) {
-      setMessageHistory((prev) => ({
-        ...prev,
-        [curConversation]: messages,
-      }));
-    }
-  }, [messages]);
-
-  // ==================== Render =================
   return (
     <div className={styles.layout}>
       {chatSider}
