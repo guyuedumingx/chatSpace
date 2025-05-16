@@ -361,7 +361,8 @@ const Chat: React.FC = () => {
             },
             typing: i.status === 'loading' ? { step: 5, interval: 20 } : false,
           }))}
-          style={{ height: '100%' }}
+          style={{ height: '100%', overflow: 'auto', scrollbarWidth: 'none'  }}
+          autoScroll
           roles={{
             assistant: {
               placement: 'start',
