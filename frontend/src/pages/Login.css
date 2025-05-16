@@ -1,0 +1,167 @@
+.login-container {
+  height: 100vh;
+  width: 100%;
+  background-color: #f0f2f5;
+  overflow: hidden;
+}
+
+.login-row {
+  height: 100%;
+}
+
+.login-left {
+  height: 100%;
+  position: relative;
+  background-color: #003366;
+  overflow: hidden;
+}
+
+.bank-building-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.gradient-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg, 
+    rgba(0, 51, 102, 0.7) 0%, 
+    rgba(28, 54, 107, 0.4) 50%, 
+    rgba(196, 22, 28, 0.2) 100%
+  );
+  z-index: 1;
+}
+
+.bank-building-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  filter: contrast(1.1) brightness(0.95);
+}
+
+.login-right {
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #fff;
+  box-shadow: -5px 0 15px rgba(0, 0, 0, 0.15);
+  position: relative;
+  z-index: 2;
+}
+
+.login-form-container {
+  width: 85%;
+  max-width: 400px;
+  padding: 30px 0;
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.platform-title-container {
+  text-align: center;
+}
+
+.login-title {
+  color: #c4161c !important;
+  margin-bottom: 0 !important;
+  font-weight: bold !important;
+  font-size: 28px !important;
+  line-height: 1.2 !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.login-subtitle {
+  color: #c4161c !important;
+  margin-top: 0 !important;
+  font-size: 24px !important;
+}
+
+.login-form {
+  width: 100%;
+}
+
+.login-input {
+  height: 50px;
+  border-radius: 4px;
+}
+
+.ant-input-prefix {
+  margin-right: 10px;
+  color: #bfbfbf;
+}
+
+.login-button {
+  height: 50px;
+  border-radius: 4px;
+  font-size: 16px;
+  background-color: #c4161c !important;
+  border-color: #c4161c !important;
+  margin-top: 10px;
+  box-shadow: 0 2px 6px rgba(196, 22, 28, 0.2);
+  transition: all 0.3s ease;
+}
+
+.login-button:hover, .login-button:focus {
+  background-color: #e62e34 !important;
+  border-color: #e62e34 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(196, 22, 28, 0.3);
+}
+
+.remember-text, .forgot-password {
+  color: #666;
+}
+
+.password-links {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.password-divider {
+  margin: 0 5px;
+  color: #d9d9d9;
+}
+
+.forgot-password {
+  color: #c4161c;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s;
+  height: auto;
+  line-height: 1;
+}
+
+.forgot-password:hover {
+  color: #e62e34;
+  text-decoration: underline;
+}
+
+.security-notice {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 12px;
+}
+
+/* 响应式布局 */
+@media (max-width: 768px) {
+  .login-left {
+    display: none;
+  }
+  
+  .login-right {
+    width: 100%;
+  }
+} 
