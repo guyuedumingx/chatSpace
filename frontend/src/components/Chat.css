@@ -1,0 +1,146 @@
+.chat-layout {
+  height: 100vh;
+  background: #f0f2f5;
+}
+
+.chat-header {
+  background: #fff;
+  padding: 0 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  width: 100%;
+}
+
+.header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.header-title {
+  margin: 0 !important;
+  color: #1890ff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-content {
+  padding: 24px;
+  height: calc(100vh - 64px);
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+}
+
+.chat-card {
+  width: 100%;
+  max-width: 1200px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.messages-container {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.message-wrapper {
+  display: flex;
+  width: 100%;
+}
+
+.message-wrapper.message-right {
+  justify-content: flex-end;
+}
+
+.message-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 80%;
+}
+
+.message-bubble {
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.message-bubble.left {
+  background: #f0f2f5;
+  border-radius: 8px 8px 8px 0;
+}
+
+.message-bubble.right {
+  background: #1890ff;
+  color: white;
+  border-radius: 8px 8px 0 8px;
+}
+
+.avatar {
+  background: #1890ff;
+}
+
+.input-container {
+  padding: 16px;
+  background: #fff;
+  border-top: 1px solid #f0f0f0;
+}
+
+.chat-input {
+  flex: 1;
+  resize: none;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  transition: all 0.3s;
+}
+
+.chat-input:focus {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+.send-button {
+  height: 40px;
+  padding: 0 24px;
+  font-size: 14px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* 自定义滚动条样式 */
+.messages-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.messages-container::-webkit-scrollbar-track {
+  background: #f0f0f0;
+  border-radius: 3px;
+}
+
+.messages-container::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
+
+.messages-container::-webkit-scrollbar-thumb:hover {
+  background: #999;
+} 
