@@ -6,19 +6,30 @@ import { useOrgStore } from '@/stores/OrgStore';
 import '@/pages/Login.css';
 // 正确导入图片
 import bankBuilding from '@/assets/bank-building1.jpg';
+import ChangePasswordModal from '@/components/ChangePasswordModal';
 
 const { Title, Text } = Typography;
 
 interface LoginForm {
-  orgCode: string;
-  password: string;
+  orgCode: string; // 机构号
+  password: string; // 密码 
+}
+
+interface OrgInfo {
+  orgName: string; // 机构名称
+  isFirstLogin: boolean; // 是否首次登录
+  lastPasswordChangeTime: string; // 密码修改时间
 }
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const [remember, setRemember] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [bankImageExists, setBankImageExists] = useState(true);
+  const [orgInfo, setOrgInfo] = useState<OrgInfo | null>(null);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [isFirstLogin, setIsFirstLogin] = useState(false);
   
   // 获取OrgStore中的login函数
   const login = useOrgStore((state: any) => state.login);
@@ -42,40 +53,69 @@ const Login: React.FC = () => {
     checkImageExists();
   }, []);
 
-  const handleSubmit = async (values: LoginForm) => {
+  // 检查机构号并获取机构信息
+  const checkOrgCode = async (orgCode: string) => {
     try {
-      const success = await login(values.orgCode, values.password);
+      // TODO: 调用后端接口获取机构信息
+      // const response = await getOrgInfo(orgCode);
+      // setOrgInfo(response.data);
       
-      if (success) {
-        if (remember) {
-          localStorage.setItem('rememberedOrgCode', values.orgCode);
-        } else {
-          localStorage.removeItem('rememberedOrgCode');
-        }
-        message.success('登录成功');
-        navigate('/chat');
-      } else {
-        message.error('机构号或密码错误');
-      }
+      // 模拟数据
+      setOrgInfo({
+        orgName: "集约运营中心（广东）--测试",
+        isFirstLogin: false,
+        lastPasswordChangeTime: "2025-04-01"
+      });
     } catch (error) {
-      message.error('登录失败，请稍后再试');
-      console.error('Login error:', error);
+      console.error('获取机构信息失败:', error);
+      setOrgInfo(null);
     }
   };
 
-  const handleChangePassword = () => {
-    message.info('登录后可在个人中心修改密码');
+  // 检查密码是否需要修改
+  const checkPasswordChangeRequired = (lastPasswordChangeTime: string) => {
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    return new Date(lastPasswordChangeTime) < threeMonthsAgo;
+  };
+
+  const handleSubmit = async (values: LoginForm) => {
+    try {
+      setLoading(true);
+      // TODO: 调用登录接口
+      // const response = await login(values);
+      
+      // 模拟登录成功
+      const isFirstLogin = orgInfo?.isFirstLogin || false;
+      const needChangePassword = isFirstLogin || 
+        (orgInfo?.lastPasswordChangeTime && checkPasswordChangeRequired(orgInfo.lastPasswordChangeTime));
+
+      if (needChangePassword) {
+        setIsFirstLogin(isFirstLogin);
+        setShowChangePassword(true);
+      } else {
+        navigate('/dashboard');
+      }
+    } catch (error) {
+      console.error('登录失败:', error);
+      message.error('登录失败，请检查机构号和密码');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordChangeSuccess = () => {
+    setShowChangePassword(false);
+    navigate('/dashboard');
   };
 
   return (
     <div className="login-container">
       <Row className="login-row">
-        <Col flex="50%" className="login-left">
+        <Col flex="55%" className="login-left">
           <div className="bank-building-container">
             {bankImageExists ? (
-              <>
-                <img src={bankBuilding} alt="中国银行大楼" className="bank-building-image" />
-              </>
+              <img src={bankBuilding} alt="中国银行大楼" className="bank-building-image" />
             ) : (
               <div style={{ color: 'white', textAlign: 'center', padding: '20px' }}>
                 <div style={{ fontSize: '60px', marginBottom: '20px' }}>
@@ -87,14 +127,13 @@ const Login: React.FC = () => {
             )}
           </div>
         </Col>
-        <Col flex="50%" className="login-right">
+        <Col flex="45%" className="login-right">
           <div className="login-form-container">
             <div className="login-header">
               <div className="platform-title-container">
                 <Title level={2} className="login-title">远程核准线上咨询平台</Title>
               </div>
             </div>
-            
             <Form
               form={form}
               name="login"
@@ -105,6 +144,11 @@ const Login: React.FC = () => {
               }}
               className="login-form"
             >
+              {orgInfo && (
+                <div className="org-info">
+                  <Text type="secondary">你好！{orgInfo.orgName}</Text>
+                </div>
+              )}
               <Form.Item
                 name="orgCode"
                 rules={[{ required: true, message: '请输入机构号' }]}
@@ -114,9 +158,9 @@ const Login: React.FC = () => {
                   placeholder="请输入机构号"
                   size="large"
                   className="login-input"
+                  onChange={(e) => checkOrgCode(e.target.value)}
                 />
               </Form.Item>
-
               <Form.Item
                 name="password"
                 rules={[{ required: true, message: '请输入密码' }]}
@@ -129,25 +173,23 @@ const Login: React.FC = () => {
                   iconRender={visible => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
                 />
               </Form.Item>
-
               <Form.Item>
                 <Row justify="space-between" align="middle">
                   <Col>
-                    <Checkbox 
-                      checked={remember} 
+                    <Checkbox
+                      checked={remember}
                       onChange={(e) => setRemember(e.target.checked)}
                     >
                       <Text className="remember-text">记住账号</Text>
                     </Checkbox>
                   </Col>
                   <Col className="password-links">
-                    <Button type="link" className="forgot-password" onClick={handleChangePassword}>
-                      修改密码
+                    <Button type="link" className="forgot-password">
+                      忘记密码？
                     </Button>
                   </Col>
                 </Row>
               </Form.Item>
-
               <Form.Item>
                 <Button
                   type="primary"
@@ -155,6 +197,7 @@ const Login: React.FC = () => {
                   size="large"
                   block
                   className="login-button"
+                  loading={loading}
                 >
                   登录
                 </Button>
@@ -167,6 +210,12 @@ const Login: React.FC = () => {
           </div>
         </Col>
       </Row>
+      <ChangePasswordModal
+        visible={showChangePassword}
+        onCancel={() => setShowChangePassword(false)}
+        onSuccess={handlePasswordChangeSuccess}
+        isFirstLogin={isFirstLogin}
+      />
     </div>
   );
 };
