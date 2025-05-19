@@ -11,14 +11,14 @@ import ChangePasswordModal from '@/components/ChangePasswordModal';
 const { Title, Text } = Typography;
 
 interface LoginForm {
-  orgCode: string; // 机构号
-  password: string; // 密码 
+  orgCode: string;  // 机构号
+  password: string; // 密码
 }
 
 interface OrgInfo {
-  orgName: string; // 机构名称
-  isFirstLogin: boolean; // 是否首次登录
-  lastPasswordChangeTime: string; // 密码修改时间
+  orgName: string;    //机构名称
+  isFirstLogin: boolean; //是否首次登录
+  lastPasswordChangeTime: string; //密码最后修改时间
 }
 
 const Login: React.FC = () => {
@@ -64,7 +64,7 @@ const Login: React.FC = () => {
       setOrgInfo({
         orgName: "集约运营中心（广东）--测试",
         isFirstLogin: false,
-        lastPasswordChangeTime: "2025-04-01"
+        lastPasswordChangeTime: "2024-01-01"
       });
     } catch (error) {
       console.error('获取机构信息失败:', error);
@@ -86,21 +86,15 @@ const Login: React.FC = () => {
       // const response = await login(values);
       
       // 模拟登录成功
-      const success = await login(values.orgCode, values.password);
-      
-      if (success) {
-        const isFirstLogin = orgInfo?.isFirstLogin || false;
-        const needChangePassword = isFirstLogin || 
-          (orgInfo?.lastPasswordChangeTime && checkPasswordChangeRequired(orgInfo.lastPasswordChangeTime));
+      const isFirstLogin = orgInfo?.isFirstLogin || false;
+      const needChangePassword = isFirstLogin || 
+        (orgInfo?.lastPasswordChangeTime && checkPasswordChangeRequired(orgInfo.lastPasswordChangeTime));
 
-        if (needChangePassword) {
-          setIsFirstLogin(isFirstLogin);
-          setShowChangePassword(true);
-        } else {
-          navigate('/chat');
-        }
+      if (needChangePassword) {
+        setIsFirstLogin(isFirstLogin);
+        setShowChangePassword(true);
       } else {
-        message.error('机构号或密码错误');
+        navigate('/dashboard');
       }
     } catch (error) {
       console.error('登录失败:', error);
@@ -112,7 +106,7 @@ const Login: React.FC = () => {
 
   const handlePasswordChangeSuccess = () => {
     setShowChangePassword(false);
-    navigate('/chat');
+    navigate('/dashboard');
   };
 
   return (
