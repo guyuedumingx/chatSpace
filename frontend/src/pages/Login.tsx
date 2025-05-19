@@ -30,6 +30,7 @@ const Login: React.FC = () => {
   const [orgInfo, setOrgInfo] = useState<OrgInfo | null>(null);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [isFirstLogin, setIsFirstLogin] = useState(false);
+  const [isForceChange, setIsForceChange] = useState(false);
   
   // 获取OrgStore中的login函数
   const login = useOrgStore((state: any) => state.login);
@@ -55,6 +56,11 @@ const Login: React.FC = () => {
 
   // 检查机构号并获取机构信息
   const checkOrgCode = async (orgCode: string) => {
+    if (!orgCode) {
+      setOrgInfo(null);
+      return;
+    }
+    
     try {
       // TODO: 调用后端接口获取机构信息
       // const response = await getOrgInfo(orgCode);
@@ -64,11 +70,12 @@ const Login: React.FC = () => {
       setOrgInfo({
         orgName: "集约运营中心（广东）--测试",
         isFirstLogin: false,
-        lastPasswordChangeTime: "2024-01-01"
+        lastPasswordChangeTime: "2025-05-01"
       });
     } catch (error) {
       console.error('获取机构信息失败:', error);
       setOrgInfo(null);
+      message.error('机构号不存在');
     }
   };
 
@@ -92,13 +99,26 @@ const Login: React.FC = () => {
 
       if (needChangePassword) {
         setIsFirstLogin(isFirstLogin);
+        setIsForceChange(true);
         setShowChangePassword(true);
       } else {
-        navigate('/dashboard');
+        // 登录成功后保存记住的账号
+        if (remember) {
+          localStorage.setItem('rememberedOrgCode', values.orgCode);
+        } else {
+          localStorage.removeItem('rememberedOrgCode');
+        }
+        navigate('/chat');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('登录失败:', error);
-      message.error('登录失败，请检查机构号和密码');
+      if (error.code === 'ORG_NOT_FOUND') {
+        message.error('机构号不存在');
+      } else if (error.code === 'PASSWORD_ERROR') {
+        message.error('密码错误');
+      } else {
+        message.error('登录失败，请稍后重试');
+      }
     } finally {
       setLoading(false);
     }
@@ -106,7 +126,13 @@ const Login: React.FC = () => {
 
   const handlePasswordChangeSuccess = () => {
     setShowChangePassword(false);
-    navigate('/dashboard');
+    setIsForceChange(false);
+    navigate('/chat');
+  };
+
+  const handleChangePassword = () => {
+    setIsForceChange(false);
+    setShowChangePassword(true);
   };
 
   return (
@@ -158,7 +184,12 @@ const Login: React.FC = () => {
                   placeholder="请输入机构号"
                   size="large"
                   className="login-input"
-                  onChange={(e) => checkOrgCode(e.target.value)}
+                  onBlur={(e) => checkOrgCode(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Tab') {
+                      checkOrgCode(e.currentTarget.value);
+                    }
+                  }}
                 />
               </Form.Item>
               <Form.Item
@@ -184,8 +215,8 @@ const Login: React.FC = () => {
                     </Checkbox>
                   </Col>
                   <Col className="password-links">
-                    <Button type="link" className="forgot-password">
-                      忘记密码？
+                    <Button type="link" className="forgot-password" onClick={handleChangePassword}>
+                      修改密码
                     </Button>
                   </Col>
                 </Row>
@@ -215,6 +246,7 @@ const Login: React.FC = () => {
         onCancel={() => setShowChangePassword(false)}
         onSuccess={handlePasswordChangeSuccess}
         isFirstLogin={isFirstLogin}
+        isForceChange={isForceChange}
       />
     </div>
   );

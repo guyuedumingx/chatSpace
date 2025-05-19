@@ -9,6 +9,7 @@ interface ChangePasswordModalProps {
   onCancel: () => void;
   onSuccess: () => void;
   isFirstLogin?: boolean;
+  isForceChange?: boolean;
 }
 
 const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
@@ -16,6 +17,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   onCancel,
   onSuccess,
   isFirstLogin = false,
+  isForceChange = false,
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -42,14 +44,20 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
     if (isFirstLogin) {
       return "首次登录密码修改";
     }
-    return "密码修改提醒";
+    if (isForceChange) {
+      return "密码修改提醒";
+    }
+    return "修改密码";
   };
 
   const getModalDescription = () => {
     if (isFirstLogin) {
       return "为了保障您的账户安全，首次登录需要修改密码。";
     }
-    return "您的密码已超过三个月未修改，为了账户安全，请及时更新密码。";
+    if (isForceChange) {
+      return "您的密码已超过三个月未修改，为了账户安全，请及时更新密码。";
+    }
+    return "请输入原密码和新密码进行修改。";
   };
 
   return (
@@ -60,7 +68,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
       onOk={handleSubmit}
       confirmLoading={loading}
       maskClosable={false}
-      closable={false}
+      closable={!isForceChange}
       okText="确认"
       cancelText="取消"
       width={500}
