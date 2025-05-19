@@ -59,6 +59,7 @@ const App: React.FC = () => {
             <Route
               path="/chat"
               element={isLoggedIn ? <Chat /> : <Navigate to="/login" replace />}
+              // element={<Chat />}
             />
             <Route path="/" element={<Navigate to="/chat" replace />} />
           </Routes>
