@@ -86,15 +86,21 @@ const Login: React.FC = () => {
       // const response = await login(values);
       
       // 模拟登录成功
-      const isFirstLogin = orgInfo?.isFirstLogin || false;
-      const needChangePassword = isFirstLogin || 
-        (orgInfo?.lastPasswordChangeTime && checkPasswordChangeRequired(orgInfo.lastPasswordChangeTime));
+      const success = await login(values.orgCode, values.password);
+      
+      if (success) {
+        const isFirstLogin = orgInfo?.isFirstLogin || false;
+        const needChangePassword = isFirstLogin || 
+          (orgInfo?.lastPasswordChangeTime && checkPasswordChangeRequired(orgInfo.lastPasswordChangeTime));
 
-      if (needChangePassword) {
-        setIsFirstLogin(isFirstLogin);
-        setShowChangePassword(true);
+        if (needChangePassword) {
+          setIsFirstLogin(isFirstLogin);
+          setShowChangePassword(true);
+        } else {
+          navigate('/chat');
+        }
       } else {
-        navigate('/dashboard');
+        message.error('机构号或密码错误');
       }
     } catch (error) {
       console.error('登录失败:', error);
@@ -106,7 +112,7 @@ const Login: React.FC = () => {
 
   const handlePasswordChangeSuccess = () => {
     setShowChangePassword(false);
-    navigate('/dashboard');
+    navigate('/chat');
   };
 
   return (
