@@ -11,6 +11,7 @@ class Session:
         session_id: str,
         organization_id: str,
         name: Optional[str] = None,
+        group: Optional[str] = None,
         created_at: Optional[datetime] = None,
         chats: Optional[List[Chat]] = None,
     ):
@@ -27,6 +28,7 @@ class Session:
         self.session_id = session_id
         self.organization_id = organization_id
         self.name = name
+        self.group = group
         self.created_at = created_at or datetime.now()
         self.chats = chats or []
     
@@ -66,6 +68,7 @@ class Session:
             "session_id": self.session_id,
             "organization_id": self.organization_id,
             "name": self.name,
+            "group": self.group,
             "created_at": self.created_at.isoformat(),
             "chats": [chat.to_dict() for chat in self.chats]
         }
@@ -85,6 +88,7 @@ class Session:
             session_id=data["session_id"],
             organization_id=data["organization_id"],
             name=data.get("name"),
+            group=data.get("group"),
             created_at=created_at,
             chats=chats
         ) 

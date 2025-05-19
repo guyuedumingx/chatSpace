@@ -1,11 +1,38 @@
 import axios from "axios";
-import { message } from "antd";
-import dayjs from "dayjs";
 
-const API_BASE_URL = "http://localhost:8000/api";
+export const API_BASE_URL = "http://localhost:8000/api";
+//解决跨域问题
+axios.defaults.headers.common["Access-Control-Allow-Origin"] = "*";
 
 export interface ChatResponse {
   response: string;
+}
+
+export interface Message {
+  role: string;
+  content: string;
+  custom_prompts?: Array<{
+    key: string;
+    description: string;
+  }>;
+}
+
+// 前端使用的消息历史项结构
+export interface MessageHistoryItem {
+  id: string;
+  message: Message;
+  status: 'success' | 'loading' | 'error';
+}
+
+// 后端期望的消息格式
+export interface BackendMessageItem {
+  id: string;
+  role: string;
+  content: string;
+  custom_prompts?: Array<{
+    key: string;
+    description: string;
+  }>;
 }
 
 export const sendMessage = async (message: string): Promise<ChatResponse> => {
@@ -13,107 +40,50 @@ export const sendMessage = async (message: string): Promise<ChatResponse> => {
   return response.data;
 };
 
-// 模拟会话数据
-const MOCK_CONVERSATIONS = [
-  {
-    key: "default-0",
-    label: "业务咨询",
-    group: "今天",
-  },
-  {
-    key: "default-2",
-    label: "业务咨询3",
-    group: "昨天",
-  },
-];
-
-// 模拟热点问题
-const MOCK_HOT_TOPICS = [
-  {
-    key: "1-1",
-    description: "如何办理对公账户开户？",
-    icon: "1",
-  },
-  {
-    key: "1-2",
-    description: "企业网银如何开通？",
-    icon: "2",
-  },
-  {
-    key: "1-3",
-    description: "对公转账限额是多少？",
-    icon: "3",
-  },
-  {
-    key: "1-4",
-    description: "如何申请企业贷款？",
-    icon: "4",
-  },
-  {
-    key: "1-5",
-    description: "企业理财有哪些产品？",
-    icon: "5",
-  },
-];
-
-// 模拟消息历史
-const MOCK_MESSAGE_HISTORY: Record<string, any> = {};
-
 export const chatApi = {
   // 获取会话列表
   getConversations: async () => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(MOCK_CONVERSATIONS);
-      }, 500);
-    });
+    const response = await axios.get(`${API_BASE_URL}/sessions`);
+    return response.data;
   },
 
   // 创建新会话
-  createConversation: async (index: number) => {
-    const now = dayjs().valueOf().toString();
-    return {
-      key: now,
-      label: `业务咨询 ${index}`,
-      group: "今天",
-    };
+  createConversation: async (name: string) => {
+    const response = await axios.post(`${API_BASE_URL}/sessions`, {
+      label: name,
+    });
+    return response.data;
   },
 
   // 删除会话
   deleteConversation: async (key: string) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        delete MOCK_MESSAGE_HISTORY[key];
-        resolve(true);
-      }, 500);
-    });
+    const response = await axios.delete(`${API_BASE_URL}/sessions/${key}`);
+    return response.data;
   },
 
   // 获取热点问题
   getHotTopics: async () => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(MOCK_HOT_TOPICS);
-      }, 500);
-    });
+    const response = await axios.get(`${API_BASE_URL}/hot_topics`);
+    return response.data;
   },
 
   // 获取消息历史
   getMessageHistory: async (conversationKey: string) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(MOCK_MESSAGE_HISTORY[conversationKey] || []);
-      }, 500);
-    });
+    const response = await axios.get(`${API_BASE_URL}/message_history/${conversationKey}`);
+    console.log(response.data)
+    return response.data;
   },
 
-  // 保存消息历史
-  saveMessageHistory: async (conversationKey: string, messages: any[]) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        MOCK_MESSAGE_HISTORY[conversationKey] = messages;
-        resolve(true);
-      }, 500);
-    });
+  // 保存消息历史，转换为后端期望的格式
+  saveMessageHistory: async (conversationKey: string, messages: MessageHistoryItem[]) => {
+    // 将前端的MessageHistoryItem转换为后端期望的格式
+    const backendMessages = messages.map(msg => ({
+      id: String(msg.id),
+      role: msg.message.role,
+      content: msg.message.content,
+      ...(msg.message.custom_prompts ? { custom_prompts: msg.message.custom_prompts } : {})
+    }));
+    const response = await axios.post(`${API_BASE_URL}/message_history/${conversationKey}`, backendMessages);
+    return response.data;
   },
 };
