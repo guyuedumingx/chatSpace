@@ -7,7 +7,7 @@ const { Text } = Typography;
 interface ChangePasswordModalProps {
   visible: boolean;
   onCancel: () => void;
-  onSuccess: () => void;
+  onSuccess: (oldPassword: string, newPassword: string) => void;
   isFirstLogin?: boolean;
   isForceChange?: boolean;
 }
@@ -27,14 +27,11 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
       const values = await form.validateFields();
       setLoading(true);
       
-      // TODO: 调用修改密码接口
-      // const response = await changePassword(values);
-      
-      message.success('密码修改成功');
-      onSuccess();
+      // 将密码信息传递给父组件处理
+      onSuccess(values.oldPassword, values.newPassword);
     } catch (error) {
       console.error('密码修改失败:', error);
-      message.error('密码修改失败，请重试');
+      message.error('请完成所有字段并确保密码符合要求');
     } finally {
       setLoading(false);
     }

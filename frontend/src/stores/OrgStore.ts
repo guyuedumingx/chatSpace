@@ -6,6 +6,7 @@ interface OrgState {
   isLoggedIn: boolean;
   login: (orgCode: string, password: string) => Promise<boolean>;
   logout: () => void;
+  setOrgStore: (state: Partial<OrgState>) => void;
 }
 
 // 模拟机构数据
@@ -36,5 +37,13 @@ export const useOrgStore = create<OrgState>((set: any) => ({
 
   logout: () => {
     set({ orgCode: '', orgName: '', isLoggedIn: false });
+    localStorage.removeItem('token');
   },
+
+  setOrgStore: (newState: Partial<OrgState>) => {
+    set((state: OrgState) => ({
+      ...state,
+      ...newState
+    }));
+  }
 })); 
