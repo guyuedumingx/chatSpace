@@ -130,11 +130,19 @@ class ChatCompletionRequest(BaseModel):
 def generate_assistant_reply(user_content: str):
     user_content = user_content.lower()
     matched_responses = []
+
     for resp_data in mock_keyword_responses:
-        for keyword in resp_data["keywords"]:
-            if keyword.lower() in user_content:
-                matched_responses.append(resp_data)
-                break
+        if resp_data['prompt_label'] == user_content:
+            matched_responses.append(resp_data)
+            break
+
+    if not matched_responses:
+        for resp_data in mock_keyword_responses:
+            for keyword in resp_data["keywords"]:
+                if keyword.lower() in user_content:
+                    matched_responses.append(resp_data)
+                    break
+
     final_response_content = default_mock_response_content
     prompts_for_user = []
     if not matched_responses:
