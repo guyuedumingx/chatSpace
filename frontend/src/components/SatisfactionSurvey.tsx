@@ -15,10 +15,11 @@ interface SatisfactionSurveyProps {
 const SatisfactionSurvey: React.FC<SatisfactionSurveyProps> = ({ visible, onClose, onSubmit, contactName, contactPhone }) => {
   const [solved, setSolved] = React.useState<'yes' | 'no' | undefined>();
   const [comment, setComment] = React.useState('');
+  const [messageApi, contextHolder] = message.useMessage();
 
   const handleOk = () => {
     if (!solved) {
-      message.warning('请选择“是否解决您的问题”');
+      messageApi.warning('请选择“是否解决您的问题”');
       return;
     }
     onSubmit({
@@ -40,6 +41,7 @@ const SatisfactionSurvey: React.FC<SatisfactionSurveyProps> = ({ visible, onClos
       cancelText="取消"
       destroyOnClose
     >
+      {contextHolder}
       <div style={{ marginBottom: 16 }}>
         <div style={{ marginBottom: 8 }}>本次咨询是否已解决您的问题？</div>
         <Radio.Group

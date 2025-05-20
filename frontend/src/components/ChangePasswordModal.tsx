@@ -21,6 +21,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [messageApi, contextHolder] = message.useMessage();
 
   const handleSubmit = async () => {
     try {
@@ -30,8 +31,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
       // 将密码信息传递给父组件处理
       onSuccess(values.oldPassword, values.newPassword);
     } catch (error) {
-      console.error('密码修改失败:', error);
-      message.error('请完成所有字段并确保密码符合要求');
+      messageApi.error('请完成所有字段并确保密码符合要求');
     } finally {
       setLoading(false);
     }
@@ -70,6 +70,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
       cancelText="取消"
       width={500}
     >
+      {contextHolder}
       <div style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: 16 }}>
           <ExclamationCircleOutlined style={{ color: '#faad14', fontSize: 16, marginRight: 8, marginTop: 4 }} />
@@ -102,8 +103,8 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
             { required: true, message: '请输入新密码' },
             { min: 8, message: '密码长度不能小于8位' },
             { 
-              pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
-              message: '密码必须包含大小写字母、数字和特殊字符'
+              pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$/,
+              message: '密码必须包含大小写字母、数字'
             }
           ]}
         >

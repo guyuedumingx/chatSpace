@@ -98,6 +98,8 @@ const ChatList: React.FC<ChatListProps> = ({
   handleEndChat,
 }) => {
   const { styles } = useStyle();
+  const [messageApi, contextHolder] = message.useMessage();
+
   const renderCustomPrompts = (msg: ExtendedBubbleDataType) => {
     if (!msg.custom_prompts || msg.custom_prompts.length === 0) {
       return null;
@@ -182,7 +184,7 @@ const ChatList: React.FC<ChatListProps> = ({
                           e.stopPropagation();
                           if (contentText) {
                             navigator.clipboard.writeText(contentText);
-                            message.success('复制成功');
+                            messageApi.success('复制成功');
                           }
                           }}
                         />
@@ -208,6 +210,7 @@ const ChatList: React.FC<ChatListProps> = ({
 
   return (
     <div className={styles.chatList}>
+      {contextHolder}
       <Space direction="vertical" size={16} className={styles.placeholder}>
         <Welcome
           icon={<img src={bot} alt="bot" />}

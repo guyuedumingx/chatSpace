@@ -1,11 +1,12 @@
 import { useXAgent, useXChat } from '@ant-design/x';
 import type { BubbleDataType } from '@ant-design/x/es/bubble/BubbleList';
-import { message, Button } from 'antd';
+import { message } from 'antd';
 import { createStyles } from 'antd-style';
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOrgStore } from '@/stores/OrgStore';
-import { chatApi, API_BASE_URL, BackendMessageItem, ContactInfo, SurveyData } from '@/api/chat';
+import { chatApi, BackendMessageItem, ContactInfo } from '@/api/chat';
+import { API_BASE_URL } from '@/api/index';
 import ChatSider from '@/components/ChatSider';
 import ChatList from '@/components/ChatList';
 import ChatSender from '@/components/ChatSender';
@@ -97,6 +98,7 @@ const Chat: React.FC = () => {
   const [surveyVisible, setSurveyVisible] = useState(false);
   const [contactInfo, setContactInfo] = useState<ContactInfo>({ contactName: '', contactPhone: '' });
   const surveyTimer = useRef<NodeJS.Timeout | null>(null);
+  const [messageApi, contextHolder] = message.useMessage();
 
   // 发送消息时重置3分钟定时器
   const resetSurveyTimer = () => {
@@ -114,9 +116,9 @@ const Chat: React.FC = () => {
         session_key: curConversation,
         // user_id: 可选
       });
-      message.success('感谢您的反馈！');
+      messageApi.success('感谢您的反馈！');
     } catch {
-      message.error('提交失败，请稍后重试');
+      messageApi.error('提交失败，请稍后重试');
     }
   };
 
@@ -224,7 +226,7 @@ const Chat: React.FC = () => {
         }
       } catch (error) {
         console.error("Failed to initialize chat data:", error);
-        message.error("初始化聊天数据失败");
+        messageApi.error("初始化聊天数据失败");
         setMessages([]);
       }
     };
@@ -247,7 +249,7 @@ const Chat: React.FC = () => {
   const onSubmit = async (val: string) => {
     if (!val) return;
     if (loading) {
-      message.error('请求进行中，请稍后...');
+      messageApi.error('请求进行中，请稍后...');
       return;
     }
     // 1. 本地追加用户消息（loading）
@@ -287,7 +289,7 @@ const Chat: React.FC = () => {
       setMessages(prev => prev.map((msg, idx) =>
         idx === prev.length - 1 ? { ...msg, status: 'error' } : msg
       ));
-      message.error('发送失败');
+      messageApi.error('发送失败');
     }
   };
 
@@ -306,12 +308,13 @@ const Chat: React.FC = () => {
 
   const handleLogout = () => {
     logout();
-    message.success('已退出登录');
+    messageApi.success('已退出登录');
     navigate('/login');
   };
 
   return (
     <div className={styles.layout}>
+      {contextHolder}
       <ChatSider
         conversations={conversations}
         curConversation={curConversation}

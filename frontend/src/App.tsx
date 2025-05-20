@@ -8,7 +8,7 @@ import './styles/global.css';
 import { useOrgStore } from './stores/OrgStore';
 
 const App: React.FC = () => {
-  const isLoggedIn = useOrgStore((state: any) => state.isLoggedIn);
+  const token = useOrgStore((state: any) => state.token);
 
   return (
     <StrictMode>
@@ -54,12 +54,11 @@ const App: React.FC = () => {
           <Routes>
             <Route
               path="/login"
-              element={isLoggedIn ? <Navigate to="/chat" replace /> : <Login />}
+              element={token ? <Navigate to="/chat" replace /> : <Login />}
             />
             <Route
               path="/chat"
-              element={isLoggedIn ? <Chat /> : <Navigate to="/login" replace />}
-              // element={<Chat />}
+              element={token ? <Chat /> : <Navigate to="/login" replace />}
             />
             <Route path="/" element={<Navigate to="/chat" replace />} />
           </Routes>

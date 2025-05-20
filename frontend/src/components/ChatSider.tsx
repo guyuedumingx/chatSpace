@@ -100,7 +100,7 @@ const ChatSider: React.FC<ChatSiderProps> = ({
   handleLogout,
 }) => {
   const { styles } = useStyle();
-
+  const [messageApi, contextHolder] = message.useMessage();
   const mapApiHistoryToMessageInfo = (history: ExtendedBubbleDataType[]): ChatMessageInfo[] => {
     return history.map((item, index) => ({
       id: item.id || `history-item-${index}`,
@@ -111,6 +111,7 @@ const ChatSider: React.FC<ChatSiderProps> = ({
 
   return (
     <div className={styles.sider}>
+      {contextHolder}
       <div className={styles.logo}>
         <img src={logo} draggable={false} alt="logo" width={24} height={24} />
         <span>远程核准线上咨询平台</span>
@@ -126,7 +127,7 @@ const ChatSider: React.FC<ChatSiderProps> = ({
             setMessages([]);
           } catch (error) {
             console.error("Failed to create conversation:", error);
-            message.error("创建新会话失败");
+            messageApi.error("创建新会话失败");
           }
         }}
         type="link"
@@ -152,7 +153,7 @@ const ChatSider: React.FC<ChatSiderProps> = ({
               }
             } catch (error) {
               console.error("Failed to get message history for key:", val, error);
-              message.error("获取历史消息失败");
+              messageApi.error("获取历史消息失败");
               setMessages([]);
             }
           }, 100);
@@ -183,7 +184,7 @@ const ChatSider: React.FC<ChatSiderProps> = ({
                   }
                 } catch (error) {
                   console.error("Failed to delete conversation:", error);
-                  message.error("删除会话失败");
+                  messageApi.error("删除会话失败");
                 }
               },
             },

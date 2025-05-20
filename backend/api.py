@@ -239,35 +239,62 @@ async def get_contact_info(session_key: str = None, user_id: str = None):
 # mock用户数据
 mock_users = [
     {
-        "org_code": "10001",
-        "ehr": "E123456",
+        "orgCode": "36909",
+        "ehrNo": "0492555",
         "phone": "13800001111",
         "password": "123456",
-        "token": "mock-token-10001"
+        "userName": "张三",
+        "orgName": "集约运营中心（广东）",
+        "isFirstLogin": True,
+        "lastPasswordChangeTime": "2025-01-01"
     },
     # 可添加更多用户
 ]
 
 @app.post("/api/login")
 async def login(data: dict):
-    org_code = data.get("org_code")
-    ehr = data.get("ehr")
+    org_code = data.get("orgCode")
+    # TODO 留存EHR、电话、姓名
+    ehr = data.get("ehrNo")
     phone = data.get("phone")
+    userName = data.get("userName")
     password = data.get("password")
     for user in mock_users:
         if (
-            user["org_code"] == org_code and
-            user["ehr"] == ehr and
-            user["phone"] == phone and
+            user["orgCode"] == org_code and
             user["password"] == password
         ):
             return {
-                "token": create_access_token(data={"sub": user["org_code"]}),
-                "org_code": user["org_code"],
-                "ehr": user["ehr"],
-                "phone": user["phone"]
+                "token": create_access_token(data={"sub": user["orgCode"]}),
+                "orgCode": user["orgCode"],
+                "orgName": user["orgName"],
+                "isFirstLogin": user["isFirstLogin"],
+                "lastPasswordChangeTime": user["lastPasswordChangeTime"]
             }
     raise HTTPException(status_code=401, detail="机构号、EHR、电话或密码错误")
+
+@app.get("/api/org/{orgCode}")
+async def get_org_info(orgCode: str):
+    for user in mock_users:
+        if user["orgCode"] == orgCode:
+            return {
+                "orgName": user["orgName"],
+                "isFirstLogin": user["isFirstLogin"],
+                "lastPasswordChangeTime": user["lastPasswordChangeTime"]
+            }
+    raise HTTPException(status_code=404, detail="机构号不存在")
+
+@app.post("/api/changePassword")
+async def change_password(data: dict):
+    orgCode = data.get("orgCode")
+    oldPassword = data.get("oldPassword")
+    newPassword = data.get("newPassword")
+    for user in mock_users:
+        if user["orgCode"] == orgCode and user["password"] == oldPassword:
+            user["password"] = newPassword
+            user["lastPasswordChangeTime"] = datetime.now().strftime("%Y-%m-%d")
+            return {"success": True}
+    raise HTTPException(status_code=401, detail="机构号、旧密码或新密码错误")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
