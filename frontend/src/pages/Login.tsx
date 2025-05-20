@@ -396,7 +396,7 @@ const Login: React.FC = () => {
                 />
               </Form.Item>
               <Row gutter={16}>
-                <Col span={6}>
+                <Col span={12}>
                   <Form.Item
                     name="ehrNo"
                     rules={[
@@ -407,12 +407,12 @@ const Login: React.FC = () => {
                     <Input
                       prefix={<IdcardOutlined className="site-form-item-icon" />}
                       placeholder="请输入EHR号"
-                      size="middle"
+                      size="large"
                       className="login-input"
                     />
                   </Form.Item>
                 </Col>
-                <Col span={6}>
+                <Col span={12}>
                   <Form.Item
                     name="userName"
                     rules={[
@@ -423,28 +423,26 @@ const Login: React.FC = () => {
                     <Input
                       prefix={<UserOutlined className="site-form-item-icon" />}
                       placeholder="请输入姓名"
-                      size="middle"
-                      className="login-input"
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    name="phone"
-                    rules={[
-                      { required: true, message: '请输入联系电话' },
-                      { pattern: /^\d+$/, message: '联系电话只能输入数字' }
-                    ]}
-                  >
-                    <Input
-                      prefix={<PhoneOutlined className="site-form-item-icon" />}
-                      placeholder="请输入联系电话"
-                      size="middle"
+                      size="large"
                       className="login-input"
                     />
                   </Form.Item>
                 </Col>
               </Row>
+              <Form.Item
+                name="phone"
+                rules={[
+                  { required: true, message: '请输入联系电话' },
+                  { pattern: /^\d+$/, message: '联系电话只能输入数字' }
+                ]}
+              >
+                <Input
+                  prefix={<PhoneOutlined className="site-form-item-icon" />}
+                  placeholder="请输入联系电话"
+                  size="large"
+                  className="login-input"
+                />
+              </Form.Item>
               <Form.Item>
                 <Row justify="space-between" align="middle">
                   <Col>
