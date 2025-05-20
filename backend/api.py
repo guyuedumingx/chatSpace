@@ -4,20 +4,12 @@ from pydantic import BaseModel
 from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-
+from fastapi import APIRouter
 from util import mask_sensitive
 from security import create_access_token
 
-app = FastAPI()
 
-# 解决跨域问题
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+router = APIRouter(prefix="/api")
 
 sessions = [
     {
@@ -150,11 +142,11 @@ def generate_assistant_reply(user_content: str):
         ]
     return final_response_content, prompts_for_user
 
-@app.get("/api/sessions")
+@router.get("/sessions")
 async def get_sessions():
     return sessions
 
-@app.post("/api/sessions")
+@router.post("/sessions")
 async def create_session(data: dict):
     session_id = f"session-{len(sessions)}-{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
     session = {
@@ -166,7 +158,7 @@ async def create_session(data: dict):
     sessions.insert(0, session) # Insert new sessions at the beginning
     return session
 
-@app.delete("/api/sessions/{key}")
+@router.delete("/sessions/{key}")
 async def delete_session(key: str):
     global sessions # Ensure we are modifying the global list
     original_len = len(sessions)
@@ -181,16 +173,16 @@ async def delete_session(key: str):
         return {"message": "Session not found or already deleted"}
 
 
-@app.get("/api/hot_topics")
+@router.get("/hot_topics")
 async def get_hot_topics():
     return mock_hot_topics
 
-@app.get("/api/message_history/{key}")
+@router.get("/message_history/{key}")
 async def get_message_history(key: str):
     # 返回完整历史，格式为[{id, role, content, custom_prompts?}, ...]
     return mock_message_history.get(key, [])
 
-@app.post("/api/message_history/{key}")
+@router.post("/message_history/{key}")
 async def save_message_history(key: str, message: dict):
     user_msg = {
         "id": f"msg_{int(datetime.now().timestamp()*1000)}",
@@ -218,14 +210,14 @@ mock_contacts = {
     # 可以添加更多会话key或user_id对应的联系人
 }
 
-@app.post("/api/survey")
+@router.post("/survey")
 async def submit_survey(data: dict):
     # data: {solved: 'yes'|'no', comment: str, session_key: str, user_id: str (可选)}
     # 这里可以保存到数据库或日志，这里只打印
     print("收到满意度调查：", data)
     return {"success": True}
 
-@app.get("/api/contact_info")
+@router.get("/contact_info")
 async def get_contact_info(session_key: str = None, user_id: str = None):
     # 优先用session_key查找联系人
     if session_key and session_key in mock_contacts:
@@ -251,29 +243,37 @@ mock_users = [
     # 可添加更多用户
 ]
 
-@app.post("/api/login")
+@router.post("/login")
 async def login(data: dict):
+    # 简单的登录验证，实际环境中应做更强的安全措施
     org_code = data.get("orgCode")
-    # TODO 留存EHR、电话、姓名
-    ehr = data.get("ehrNo")
-    phone = data.get("phone")
-    userName = data.get("userName")
     password = data.get("password")
-    for user in mock_users:
-        if (
-            user["orgCode"] == org_code and
-            user["password"] == password
-        ):
-            return {
-                "token": create_access_token(data={"sub": user["orgCode"]}),
-                "orgCode": user["orgCode"],
-                "orgName": user["orgName"],
-                "isFirstLogin": user["isFirstLogin"],
-                "lastPasswordChangeTime": user["lastPasswordChangeTime"]
-            }
-    raise HTTPException(status_code=401, detail="机构号、EHR、电话或密码错误")
+    
+    # 查找用户
+    user = next((u for u in mock_users if u["orgCode"] == org_code), None)
+    if not user or user["password"] != password:
+        raise HTTPException(
+            status_code=401, 
+            detail="无效的机构号或密码"
+        )
+    
+    # 生成token
+    access_token = create_access_token({"sub": org_code})
+    
+    # 返回登录信息
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "orgCode": user["orgCode"],
+            "orgName": user["orgName"],
+            "userName": user["userName"],
+            "isFirstLogin": user["isFirstLogin"],
+            "lastPasswordChangeTime": user["lastPasswordChangeTime"]
+        }
+    }
 
-@app.get("/api/org/{orgCode}")
+@router.get("/org/{orgCode}")
 async def get_org_info(orgCode: str):
     for user in mock_users:
         if user["orgCode"] == orgCode:
@@ -284,7 +284,7 @@ async def get_org_info(orgCode: str):
             }
     raise HTTPException(status_code=404, detail="机构号不存在")
 
-@app.post("/api/changePassword")
+@router.post("/changePassword")
 async def change_password(data: dict):
     orgCode = data.get("orgCode")
     oldPassword = data.get("oldPassword")
@@ -297,4 +297,4 @@ async def change_password(data: dict):
     raise HTTPException(status_code=401, detail="机构号、旧密码或新密码错误")
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run("api:router", host="0.0.0.0", port=8000)

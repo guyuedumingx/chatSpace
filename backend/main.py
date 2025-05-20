@@ -3,9 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from chat import QwenChatbot
 import uvicorn
+from admin_api import router as admin_router
+from api import router as api_router
 
 app = FastAPI()
-iyughuihiuh
+
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
@@ -15,22 +17,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize chatbot
-chatbot = QwenChatbot()
+# 注册管理API路由
+app.include_router(admin_router)
+app.include_router(api_router)
 
-class ChatRequest(BaseModel):
-    message: str
+# # Initialize chatbot
+# chatbot = QwenChatbot()
 
-class ChatResponse(BaseModel):
-    response: str
+# class ChatRequest(BaseModel):
+#     message: str
 
-@app.post("/api/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
-    try:
-        response = chatbot.generate_response(request.message)
-        return ChatResponse(response=response)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# class ChatResponse(BaseModel):
+#     response: str
+
+# @app.post("/api/chat", response_model=ChatResponse)
+# async def chat(request: ChatRequest):
+#     try:
+#         response = chatbot.generate_response(request.message)
+#         return ChatResponse(response=response)
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True) 
