@@ -1,9 +1,12 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+
+from util import mask_sensitive
+from security import create_access_token
 
 app = FastAPI()
 
@@ -54,19 +57,8 @@ mock_hot_topics = [
 
 mock_message_history = {
     "default-0": [
-        {
-            "id": "msg_1",
-            "message": {
-                "role": "user",
-                "content": "你好，我想办理对公账户开户。",
-            },
-            "status": "success",
-        }
     ]
 }
-
-# SILICONFLOW_API_KEY = "sk-ravoadhrquyrkvaqsgyeufqdgphwxfheifujmaoscudjgldr" # Commented out
-# SILICONFLOW_API_URL = "https://api.siliconflow.cn/v1/chat/completions" # Commented out
 
 # Mock data based on keywords
 mock_keyword_responses = [
@@ -158,45 +150,6 @@ def generate_assistant_reply(user_content: str):
         ]
     return final_response_content, prompts_for_user
 
-@app.post("/api/chat/completions")
-async def chat_completions(chat_request: ChatCompletionRequest, request: Request):
-    """
-    Returns mock chat completion data based on keywords in the user's message.
-    If multiple keywords/responses match, it returns a list of prompts.
-    Stream flag is currently ignored, always returns a non-streaming JSON response.
-    """
-    user_message = ""
-    if chat_request.messages and len(chat_request.messages) > 0:
-        for msg in reversed(chat_request.messages):
-            if msg.get("role") == "user":
-                user_message = msg.get("content", "").lower()
-                break
-    final_response_content, prompts_for_user = generate_assistant_reply(user_message)
-    response_payload = {
-        "id": f"chatcmpl-mock-{int(datetime.now().timestamp())}",
-        "object": "chat.completion",
-        "created": int(datetime.now().timestamp()),
-        "model": chat_request.model,
-        "choices": [
-            {
-                "index": 0,
-                "message": {
-                    "role": "assistant",
-                    "content": final_response_content,
-                },
-                "finish_reason": "stop"
-            }
-        ],
-        "usage": {
-            "prompt_tokens": 0, 
-            "completion_tokens": 0,
-            "total_tokens": 0
-        }
-    }
-    if prompts_for_user:
-        response_payload["choices"][0]["message"]["custom_prompts"] = prompts_for_user
-    return response_payload
-
 @app.get("/api/sessions")
 async def get_sessions():
     return sessions
@@ -242,7 +195,7 @@ async def save_message_history(key: str, message: dict):
     user_msg = {
         "id": f"msg_{int(datetime.now().timestamp()*1000)}",
         "role": "user",
-        "content": message.get("content", "")
+        "content": mask_sensitive(message.get("content", ""))
     }
     if key not in mock_message_history:
         mock_message_history[key] = []
@@ -258,6 +211,63 @@ async def save_message_history(key: str, message: dict):
         assistant_msg["custom_prompts"] = prompts_for_user
     mock_message_history[key].append(assistant_msg)
     return assistant_msg
+
+# 假设每个会话或用户有固定联系人
+mock_contacts = {
+    "default-0": {"contactName": "张三", "contactPhone": "13888888888"},
+    # 可以添加更多会话key或user_id对应的联系人
+}
+
+@app.post("/api/survey")
+async def submit_survey(data: dict):
+    # data: {solved: 'yes'|'no', comment: str, session_key: str, user_id: str (可选)}
+    # 这里可以保存到数据库或日志，这里只打印
+    print("收到满意度调查：", data)
+    return {"success": True}
+
+@app.get("/api/contact_info")
+async def get_contact_info(session_key: str = None, user_id: str = None):
+    # 优先用session_key查找联系人
+    if session_key and session_key in mock_contacts:
+        return mock_contacts[session_key]
+    # 也可以根据user_id查找
+    # if user_id and user_id in mock_contacts:
+    #     return mock_contacts[user_id]
+    # 默认返回第一个
+    return list(mock_contacts.values())[0]
+
+# mock用户数据
+mock_users = [
+    {
+        "org_code": "10001",
+        "ehr": "E123456",
+        "phone": "13800001111",
+        "password": "123456",
+        "token": "mock-token-10001"
+    },
+    # 可添加更多用户
+]
+
+@app.post("/api/login")
+async def login(data: dict):
+    org_code = data.get("org_code")
+    ehr = data.get("ehr")
+    phone = data.get("phone")
+    password = data.get("password")
+    for user in mock_users:
+        if (
+            user["org_code"] == org_code and
+            user["ehr"] == ehr and
+            user["phone"] == phone and
+            user["password"] == password
+        ):
+            return {
+                "token": create_access_token(data={"sub": user["org_code"]}),
+                "org_code": user["org_code"],
+                "ehr": user["ehr"],
+                "phone": user["phone"]
+            }
+    raise HTTPException(status_code=401, detail="机构号、EHR、电话或密码错误")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
