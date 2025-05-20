@@ -54,19 +54,8 @@ mock_hot_topics = [
 
 mock_message_history = {
     "default-0": [
-        {
-            "id": "msg_1",
-            "message": {
-                "role": "user",
-                "content": "你好，我想办理对公账户开户。",
-            },
-            "status": "success",
-        }
     ]
 }
-
-# SILICONFLOW_API_KEY = "sk-ravoadhrquyrkvaqsgyeufqdgphwxfheifujmaoscudjgldr" # Commented out
-# SILICONFLOW_API_URL = "https://api.siliconflow.cn/v1/chat/completions" # Commented out
 
 # Mock data based on keywords
 mock_keyword_responses = [
@@ -258,6 +247,30 @@ async def save_message_history(key: str, message: dict):
         assistant_msg["custom_prompts"] = prompts_for_user
     mock_message_history[key].append(assistant_msg)
     return assistant_msg
+
+# 假设每个会话或用户有固定联系人
+mock_contacts = {
+    "default-0": {"contactName": "张三", "contactPhone": "138****8888"},
+    # 可以添加更多会话key或user_id对应的联系人
+}
+
+@app.post("/api/survey")
+async def submit_survey(data: dict):
+    # data: {solved: 'yes'|'no', comment: str, session_key: str, user_id: str (可选)}
+    # 这里可以保存到数据库或日志，这里只打印
+    print("收到满意度调查：", data)
+    return {"success": True}
+
+@app.get("/api/contact_info")
+async def get_contact_info(session_key: str = None, user_id: str = None):
+    # 优先用session_key查找联系人
+    if session_key and session_key in mock_contacts:
+        return mock_contacts[session_key]
+    # 也可以根据user_id查找
+    # if user_id and user_id in mock_contacts:
+    #     return mock_contacts[user_id]
+    # 默认返回第一个
+    return list(mock_contacts.values())[0]
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
