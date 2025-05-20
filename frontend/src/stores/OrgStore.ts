@@ -9,7 +9,7 @@ interface LoginData {
   phone: string;
 }
 
-interface OrgState {
+export interface OrgState {
   orgCode: string;
   orgName: string;
   isFirstLogin: boolean;
@@ -24,12 +24,12 @@ export const useOrgStore = create<OrgState>((set) => ({
   orgCode: '',
   orgName: '',
   isFirstLogin: false,
-  token: localStorage.getItem('token') || '',
+  token: '',
   lastPasswordChangeTime: '',
   login: async (data: LoginData) => {
     const res = await orgApi.login(data);
     localStorage.setItem('token', res.token);
-    set({ orgCode: res.orgCode, orgName: res.orgName, isFirstLogin: true, token: res.token, lastPasswordChangeTime: res.lastPasswordChangeTime });
+    set({ orgCode: res.orgCode, orgName: res.orgName, isFirstLogin: res.isFirstLogin, token: res.token, lastPasswordChangeTime: res.lastPasswordChangeTime });
     return res;
   },
 

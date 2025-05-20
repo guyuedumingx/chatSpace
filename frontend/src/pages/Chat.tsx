@@ -89,7 +89,7 @@ const Chat: React.FC = () => {
   const { styles } = useStyle();
   const navigate = useNavigate();
   const abortController = useRef<AbortController | null>(null);
-  const { orgName, logout } = useOrgStore();
+  const { orgName, logout, orgCode } = useOrgStore();
 
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [curConversation, setCurConversation] = useState<string>('');
@@ -208,7 +208,7 @@ const Chat: React.FC = () => {
     const initData = async () => {
       try {
         const [conversationsData, hotTopicsData] = await Promise.all([
-          chatApi.getConversations(),
+          chatApi.getConversations(orgCode),
           chatApi.getHotTopics(),
         ]);
         const typedConversations = conversationsData as ConversationItem[];
@@ -263,6 +263,7 @@ const Chat: React.FC = () => {
     // 2. 发送到后端，获取assistant回复
     try {
       const assistantMsg = await chatApi.sendMessageToHistory(curConversation, val);
+      console.log(assistantMsg)
       // 3. 更新用户消息为success，追加assistant消息
       setMessages(prev => {
         // 把最后一条用户消息的status设为success

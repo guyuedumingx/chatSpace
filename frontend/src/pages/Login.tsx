@@ -116,8 +116,8 @@ const Login: React.FC = () => {
         setCurrentOrgCode(values.orgCode);
       } else {
         // 使用navigate跳转到chat页面
-        // navigate('/chat');
-        window.location.href = '/chat';
+        navigate('/chat');
+        // window.location.href = '/chat';
       }
     } catch (error: any) {
       messageApi.error('登录失败，请检查机构号、密码是否正确');

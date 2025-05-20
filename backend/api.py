@@ -142,12 +142,12 @@ def generate_assistant_reply(user_content: str):
         ]
     return final_response_content, prompts_for_user
 
-@router.get("/sessions")
-async def get_sessions():
+@router.get("/sessions/{orgCode}")
+async def get_sessions(orgCode: str):
     return sessions
 
-@router.post("/sessions")
-async def create_session(data: dict):
+@router.post("/sessions/{orgCode}")
+async def create_session(orgCode: str, data: dict):
     session_id = f"session-{len(sessions)}-{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
     session = {
         "key": session_id,
