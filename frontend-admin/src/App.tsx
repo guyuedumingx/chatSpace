@@ -1,6 +1,6 @@
 import React from 'react';
 import { ConfigProvider } from 'antd';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import zhCN from 'antd/locale/zh_CN';
 
 // 布局组件
@@ -13,12 +13,22 @@ import Conversations from './pages/Conversations';
 import Surveys from './pages/Surveys';
 import Login from './pages/Login';
 
-const App: React.FC = () => {
-  // 检查用户是否已登录
-  const isAuthenticated = () => {
-    return !!localStorage.getItem('adminToken');
-  };
+// 认证检查组件
+const AuthRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => {
+  const isAuthenticated = !!localStorage.getItem('token');
+  const location = useLocation();
+  
+  console.log('AuthRoute - 认证状态:', isAuthenticated, '路径:', location.pathname);
+  
+  if (!isAuthenticated) {
+    // 重定向到登录页面，保存当前位置用于登录后跳回
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
 
+  return element;
+};
+
+const App: React.FC = () => {
   return (
     <ConfigProvider
       locale={zhCN}
@@ -53,23 +63,14 @@ const App: React.FC = () => {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route
-            path="/"
-            element={
-              isAuthenticated() ? (
-                <AdminLayout />
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
-          >
+          <Route path="/" element={<AuthRoute element={<AdminLayout />} />}>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="branches" element={<Branches />} />
             <Route path="conversations" element={<Conversations />} />
             <Route path="surveys" element={<Surveys />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </BrowserRouter>
     </ConfigProvider>

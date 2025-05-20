@@ -73,7 +73,7 @@
 }
 
 .login-title {
-  color: #c4161c !important;
+  color:rgb(159, 8, 13) !important;
   margin-bottom: 0 !important;
   font-weight: bold !important;
   font-size: 28px !important;
@@ -82,7 +82,7 @@
 }
 
 .login-subtitle {
-  color: #c4161c !important;
+  color:rgb(159, 8, 13) !important;
   margin-top: 0 !important;
   font-size: 24px !important;
 }

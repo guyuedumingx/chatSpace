@@ -1,182 +1,192 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Col, Row, Statistic, Divider, Table, Tag } from 'antd';
+import { Card, Col, Row, Statistic, Divider, Table, Spin, Alert } from 'antd';
 import { 
   CommentOutlined, 
   CheckCircleOutlined, 
-  CloseCircleOutlined,
-  ArrowUpOutlined,
-  ArrowDownOutlined
+  CloseCircleOutlined
 } from '@ant-design/icons';
+import { getDashboardData } from '../api';
+import type { DashboardData } from '../types';
+import ReactECharts from 'echarts-for-react';
+import type { EChartsOption } from 'echarts';
 
-// 模拟数据
-const mockData = {
-  totalConversations: 1358,
-  todayConversations: 87,
-  satisfactionRate: 92.5,
-  avgResponseTime: '1分42秒',
-  conversationGrowth: 12.3,
-  satisfactionGrowth: -2.1,
-  recentConversations: [
-    { 
-      id: '1', 
-      branch: '总行营业部', 
-      time: '2023-11-16 09:23:45', 
-      topic: '企业开户咨询', 
-      status: 'solved',
-      satisfaction: 5
-    },
-    { 
-      id: '2', 
-      branch: '金融中心支行', 
-      time: '2023-11-16 10:12:33', 
-      topic: '对公转账限额', 
-      status: 'solved',
-      satisfaction: 4
-    },
-    { 
-      id: '3', 
-      branch: '城东支行', 
-      time: '2023-11-16 10:45:21', 
-      topic: '网银开通流程', 
-      status: 'unsolved',
-      satisfaction: 3
-    },
-    { 
-      id: '4', 
-      branch: '沿江支行', 
-      time: '2023-11-16 11:03:40', 
-      topic: '理财产品咨询', 
-      status: 'solved',
-      satisfaction: 5
-    },
-    { 
-      id: '5', 
-      branch: '城西支行', 
-      time: '2023-11-16 11:05:55', 
-      topic: '密码重置问题', 
-      status: 'solved',
-      satisfaction: 4
-    },
-  ]
-};
+interface TopBranch {
+  orgCode: string;
+  orgName: string;
+  count: number;
+}
 
 const Dashboard: React.FC = () => {
-  const [data] = useState(mockData);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<DashboardData | null>(null);
 
   useEffect(() => {
-    // 这里可以从API获取真实数据
-    // 暂时使用模拟数据
+    fetchDashboardData();
   }, []);
 
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const response = await getDashboardData();
+      setData(response.data);
+      setError(null);
+    } catch (err) {
+      console.error('获取仪表盘数据失败:', err);
+      setError('获取数据失败，请稍后重试');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 生成折线图配置
+  const getLineChartOption = (): EChartsOption => {
+    if (!data || !data.conversationTrend) return {};
+
+    const dates = data.conversationTrend.map(item => item.date);
+    const counts = data.conversationTrend.map(item => item.count);
+
+    return {
+      tooltip: {
+        trigger: 'axis' as const
+      },
+      xAxis: {
+        type: 'category' as const,
+        data: dates
+      },
+      yAxis: {
+        type: 'value' as const
+      },
+      series: [
+        {
+          name: '对话数量',
+          data: counts,
+          type: 'line' as const,
+          smooth: true,
+          lineStyle: {
+            color: '#9A1F24'
+          },
+          itemStyle: {
+            color: '#9A1F24'
+          }
+        }
+      ]
+    };
+  };
+
+  // 表格列定义
   const columns = [
     {
       title: '分支机构',
-      dataIndex: 'branch',
-      key: 'branch',
+      dataIndex: 'orgName',
+      key: 'orgName',
     },
     {
-      title: '时间',
-      dataIndex: 'time',
-      key: 'time',
+      title: '对话数量',
+      dataIndex: 'count',
+      key: 'count',
     },
     {
-      title: '咨询主题',
-      dataIndex: 'topic',
-      key: 'topic',
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status: string) => (
-        <Tag color={status === 'solved' ? 'success' : 'error'}>
-          {status === 'solved' ? '已解决' : '未解决'}
-        </Tag>
+      title: '操作',
+      key: 'action',
+      render: (_: unknown, record: TopBranch) => (
+        <a href={`/branches/${record.orgCode}`}>详情</a>
       ),
-    },
-    {
-      title: '满意度',
-      dataIndex: 'satisfaction',
-      key: 'satisfaction',
-      render: (satisfaction: number) => {
-        const stars = '★'.repeat(satisfaction) + '☆'.repeat(5 - satisfaction);
-        return <span style={{ color: '#faad14' }}>{stars}</span>;
-      },
-    },
+    }
   ];
+
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '50px 0' }}>
+        <Spin size="large" />
+        <div style={{ marginTop: 16 }}>加载中...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert
+        message="错误"
+        description={error}
+        type="error"
+        showIcon
+        style={{ margin: '50px 0' }}
+      />
+    );
+  }
 
   return (
     <div>
       <h2>数据总览</h2>
       <Divider />
       
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false}>
-            <Statistic
-              title="对话总数"
-              value={data.totalConversations}
-              prefix={<CommentOutlined />}
-              suffix={
-                <span style={{ fontSize: 14, marginLeft: 8 }}>
-                  <ArrowUpOutlined style={{ color: '#52c41a' }} /> {data.conversationGrowth}%
-                </span>
-              }
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false}>
-            <Statistic
-              title="今日对话"
-              value={data.todayConversations}
-              prefix={<CommentOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false}>
-            <Statistic
-              title="平均满意度"
-              value={data.satisfactionRate}
-              prefix={<CheckCircleOutlined />}
-              suffix="%"
-              valueStyle={{ color: data.satisfactionGrowth >= 0 ? '#3f8600' : '#cf1322' }}
-            />
-            <span style={{ fontSize: 14 }}>
-              {data.satisfactionGrowth >= 0 ? (
-                <ArrowUpOutlined style={{ color: '#52c41a' }} />
-              ) : (
-                <ArrowDownOutlined style={{ color: '#cf1322' }} />
-              )}
-              {' '}
-              {Math.abs(data.satisfactionGrowth)}%
-            </span>
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false}>
-            <Statistic
-              title="平均响应时间"
-              value={data.avgResponseTime}
-              prefix={<CloseCircleOutlined />}
-            />
-          </Card>
-        </Col>
-      </Row>
+      {data && (
+        <>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12} lg={6}>
+              <Card bordered={false}>
+                <Statistic
+                  title="对话总数"
+                  value={data.totalConversations}
+                  prefix={<CommentOutlined />}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <Card bordered={false}>
+                <Statistic
+                  title="今日对话"
+                  value={data.todayConversations}
+                  prefix={<CommentOutlined />}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <Card bordered={false}>
+                <Statistic
+                  title="平均满意度"
+                  value={(data.avgSatisfactionRate * 100).toFixed(1)}
+                  prefix={<CheckCircleOutlined />}
+                  suffix="%"
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <Card bordered={false}>
+                <Statistic
+                  title="问题解决率"
+                  value={(data.solvedRate * 100).toFixed(1)}
+                  prefix={<CloseCircleOutlined />}
+                  suffix="%"
+                />
+              </Card>
+            </Col>
+          </Row>
 
-      <Card 
-        title="最近对话" 
-        style={{ marginTop: 16 }}
-        extra={<a href="/conversations">查看更多</a>}
-      >
-        <Table 
-          columns={columns} 
-          dataSource={data.recentConversations} 
-          rowKey="id"
-          pagination={false}
-        />
-      </Card>
+          <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+            <Col xs={24} lg={15}>
+              <Card title="近7天对话趋势">
+                <ReactECharts option={getLineChartOption()} style={{ height: 300 }} />
+              </Card>
+            </Col>
+            <Col xs={24} lg={9}>
+              <Card 
+                title="机构排名" 
+                extra={<a href="/branches">查看全部</a>}
+              >
+                <Table 
+                  columns={columns} 
+                  dataSource={data.topBranches} 
+                  rowKey="orgCode"
+                  pagination={false}
+                  size="small"
+                />
+              </Card>
+            </Col>
+          </Row>
+        </>
+      )}
     </div>
   );
 };

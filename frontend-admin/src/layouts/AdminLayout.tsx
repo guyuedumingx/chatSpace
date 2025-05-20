@@ -104,8 +104,8 @@ const AdminLayout: React.FC = () => {
           color: '#9A1F24',
           borderBottom: '1px solid #f0f0f0'
         }}>
-          {!collapsed && '银行业务助手管理'}
-          {collapsed && '银行'}
+          {!collapsed && '线上咨询平台管理端'}
+          {collapsed && '咨询'}
         </div>
         <Menu
           theme="light"
