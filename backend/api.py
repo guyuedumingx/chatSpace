@@ -5,6 +5,7 @@ from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
+from util import mask_sensitive
 from security import create_access_token
 
 app = FastAPI()
@@ -149,45 +150,6 @@ def generate_assistant_reply(user_content: str):
         ]
     return final_response_content, prompts_for_user
 
-@app.post("/api/chat/completions")
-async def chat_completions(chat_request: ChatCompletionRequest, request: Request):
-    """
-    Returns mock chat completion data based on keywords in the user's message.
-    If multiple keywords/responses match, it returns a list of prompts.
-    Stream flag is currently ignored, always returns a non-streaming JSON response.
-    """
-    user_message = ""
-    if chat_request.messages and len(chat_request.messages) > 0:
-        for msg in reversed(chat_request.messages):
-            if msg.get("role") == "user":
-                user_message = msg.get("content", "").lower()
-                break
-    final_response_content, prompts_for_user = generate_assistant_reply(user_message)
-    response_payload = {
-        "id": f"chatcmpl-mock-{int(datetime.now().timestamp())}",
-        "object": "chat.completion",
-        "created": int(datetime.now().timestamp()),
-        "model": chat_request.model,
-        "choices": [
-            {
-                "index": 0,
-                "message": {
-                    "role": "assistant",
-                    "content": final_response_content,
-                },
-                "finish_reason": "stop"
-            }
-        ],
-        "usage": {
-            "prompt_tokens": 0, 
-            "completion_tokens": 0,
-            "total_tokens": 0
-        }
-    }
-    if prompts_for_user:
-        response_payload["choices"][0]["message"]["custom_prompts"] = prompts_for_user
-    return response_payload
-
 @app.get("/api/sessions")
 async def get_sessions():
     return sessions
@@ -233,7 +195,7 @@ async def save_message_history(key: str, message: dict):
     user_msg = {
         "id": f"msg_{int(datetime.now().timestamp()*1000)}",
         "role": "user",
-        "content": message.get("content", "")
+        "content": mask_sensitive(message.get("content", ""))
     }
     if key not in mock_message_history:
         mock_message_history[key] = []
@@ -252,7 +214,7 @@ async def save_message_history(key: str, message: dict):
 
 # 假设每个会话或用户有固定联系人
 mock_contacts = {
-    "default-0": {"contactName": "张三", "contactPhone": "138****8888"},
+    "default-0": {"contactName": "张三", "contactPhone": "13888888888"},
     # 可以添加更多会话key或user_id对应的联系人
 }
 
