@@ -1,9 +1,11 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+
+from security import create_access_token
 
 app = FastAPI()
 
@@ -271,6 +273,39 @@ async def get_contact_info(session_key: str = None, user_id: str = None):
     #     return mock_contacts[user_id]
     # 默认返回第一个
     return list(mock_contacts.values())[0]
+
+# mock用户数据
+mock_users = [
+    {
+        "org_code": "10001",
+        "ehr": "E123456",
+        "phone": "13800001111",
+        "password": "123456",
+        "token": "mock-token-10001"
+    },
+    # 可添加更多用户
+]
+
+@app.post("/api/login")
+async def login(data: dict):
+    org_code = data.get("org_code")
+    ehr = data.get("ehr")
+    phone = data.get("phone")
+    password = data.get("password")
+    for user in mock_users:
+        if (
+            user["org_code"] == org_code and
+            user["ehr"] == ehr and
+            user["phone"] == phone and
+            user["password"] == password
+        ):
+            return {
+                "token": create_access_token(data={"sub": user["org_code"]}),
+                "org_code": user["org_code"],
+                "ehr": user["ehr"],
+                "phone": user["phone"]
+            }
+    raise HTTPException(status_code=401, detail="机构号、EHR、电话或密码错误")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
