@@ -113,7 +113,7 @@ const Chat: React.FC = () => {
     try {
       await chatApi.submitSurvey({
         ...data,
-        session_key: curConversation,
+        chat_id: curConversation,
         // user_id: 可选
       });
       messageApi.success('感谢您的反馈！');

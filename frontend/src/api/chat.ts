@@ -43,7 +43,7 @@ export interface ContactInfo {
 export interface SurveyData {
   solved: 'yes' | 'no';
   comment?: string;
-  session_key: string;
+  chat_id: string;
   user_id?: string;
 }
 
