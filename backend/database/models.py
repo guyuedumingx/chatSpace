@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
@@ -6,16 +6,30 @@ import uuid
 from .config import Base
 
 
+class Org(Base):
+    __tablename__ = "organizations"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    orgCode = Column(String, unique=True, index=True)
+    orgName = Column(String, nullable=False)
+    password = Column(String, nullable=False)  # 实际应存储加密后的密码
+    isFirstLogin = Column(Boolean, default=True)
+    passwordLastChanged = Column(DateTime, default=datetime.now)
+    
+    # 关系：一个组织只对应一个会话
+    session = relationship("Session", uselist=False, back_populates="organization", cascade="all, delete-orphan")
+
+
 class Session(Base):
     __tablename__ = "sessions"
 
     id = Column(Integer, primary_key=True, index=True)
-    session_id = Column(String, unique=True, index=True, default=lambda: str(uuid.uuid4()))
-    organization_id = Column(String, index=True)
-    name = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.now)
+    sessionId = Column(String, unique=True, index=True, default=lambda: str(uuid.uuid4()))
+    orgCode = Column(String, ForeignKey("organizations.orgCode"), unique=True)
+    createdAt = Column(DateTime, default=datetime.now)
 
-    # 关系：一个会话有多个对话
+    # 关系：一个会话属于一个组织，一个会话有多个对话
+    organization = relationship("Org", back_populates="session")
     chats = relationship("Chat", back_populates="session", cascade="all, delete-orphan")
 
 
@@ -23,10 +37,11 @@ class Chat(Base):
     __tablename__ = "chats"
 
     id = Column(Integer, primary_key=True, index=True)
-    chat_id = Column(String, unique=True, index=True, default=lambda: str(uuid.uuid4()))
-    session_id = Column(String, ForeignKey("sessions.session_id"))
+    chatId = Column(String, unique=True, index=True, default=lambda: str(uuid.uuid4()))
+    sessionId = Column(String, ForeignKey("sessions.sessionId"))
+    chatName = Column(String, nullable=False)
     title = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.now)
+    createdAt = Column(DateTime, default=datetime.now)
 
     # 关系：一个对话属于一个会话，一个对话有多条消息
     session = relationship("Session", back_populates="chats")
@@ -37,10 +52,11 @@ class Message(Base):
     __tablename__ = "messages"
 
     id = Column(Integer, primary_key=True, index=True)
-    message_id = Column(String, unique=True, index=True, default=lambda: str(uuid.uuid4()))
-    chat_id = Column(String, ForeignKey("chats.chat_id"))
+    messageId = Column(String, unique=True, index=True, default=lambda: str(uuid.uuid4()))
+    chatId = Column(String, ForeignKey("chats.chatId"))
     content = Column(Text, nullable=False)
     sender = Column(String, nullable=False)
+    status = Column(String, nullable=False)
     timestamp = Column(DateTime, default=datetime.now)
 
     # 关系：一条消息属于一个对话

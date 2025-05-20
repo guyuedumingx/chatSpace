@@ -8,71 +8,85 @@ class Chat:
     
     def __init__(
         self,
-        chat_id: str,
-        session_id: str,
+        chatName: str,
         title: Optional[str] = None,
-        created_at: Optional[datetime] = None,
+        createdAt: Optional[datetime] = None,
         messages: Optional[List[Message]] = None,
     ):
         """
         初始化一个对话
         
         参数:
-            chat_id: 对话唯一标识符
-            session_id: 所属会话的ID
+            chatId: 对话标识
+            chatName: 对话名称
             title: 对话标题
-            created_at: 创建时间，默认为当前时间
+            createdAt: 创建时间，默认为当前时间
             messages: 消息列表，默认为空列表
         """
-        self.chat_id = chat_id
-        self.session_id = session_id
+        self.chatName = chatName
         self.title = title
-        self.created_at = created_at or datetime.now()
+        self.createdAt = createdAt or datetime.now()
         self.messages = messages or []
     
-    def add_message(self, message: Message) -> None:
+    def addMessage(self, message: Message) -> None:
         """
         添加一条消息到对话中
         
         参数:
             message: 消息对象
         """
-        # 确保消息关联到当前对话
-        message.chat_id = self.chat_id
         self.messages.append(message)
     
-    def get_messages(self) -> List[Message]:
+    def getMessages(self) -> List[Message]:
         """获取对话中的所有消息"""
         return self.messages
     
-    def to_dict(self) -> dict:
+    def toBriefDict(self) -> dict:
+        """对话转换成无message字典"""
+        return {
+            "key": self.chatId,
+            "label": "业务咨询",
+            "group": "今天",
+        }
+
+    def toDict(self) -> dict:
         """将对话转换为字典格式"""
         return {
-            "chat_id": self.chat_id,
-            "session_id": self.session_id,
-            "title": self.title,
-            "created_at": self.created_at.isoformat(),
-            "messages": [message.to_dict() for message in self.messages]
+            "key": self.chatId,
+            "label": self.title,
+            "group": self.createdAt.isoformat(),
+            "messages": [message.toDict() for message in self.messages]
         }
     
     @classmethod
-    def from_dict(cls, data: dict) -> "Chat":
+    def fromDict(cls, data: dict) -> "Chat":
         """从字典创建对话对象"""
         from .message import Message
         
-        created_at = datetime.fromisoformat(data["created_at"]) if "created_at" in data else None
+        createdAt = datetime.fromisoformat(data["createdAt"]) if "createdAt" in data else None
         messages = []
         
         if "messages" in data:
-            messages = [Message.from_dict(msg_data) for msg_data in data["messages"]]
+            messages = [Message.fromDict(msgData) for msgData in data["messages"]]
         
         return cls(
-            chat_id=data["chat_id"],
-            session_id=data["session_id"],
+            chatId=data["chatId"],
+            sessionId=data["sessionId"],
             title=data.get("title"),
-            created_at=created_at,
+            createdAt=createdAt,
             messages=messages
         )
+
+    def generateResponse(self, userInput):
+        # 聊天模型处理逻辑
+        # 可按需加载模型，处理用户输入，生成回复
+        response = "模型生成的回复"  # 实际中应调用模型
+        
+        # 自动记录对话
+        self.addMessage(Message(role="user", content=userInput))
+        self.addMessage(Message(role="assistant", content=response))
+        
+        return response
 
         
 

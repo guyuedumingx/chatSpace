@@ -2,7 +2,11 @@ from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any, Type, TypeVar, Generic
 from pydantic import BaseModel
 
-from .models import Session as SessionModel, Chat, Message
+from .models import Org, Session as SessionModel, Chat as ChatModel, Message as MessageModel
+from backend.beans.org import Org as OrgBean
+from backend.beans.session import Session as SessionBean
+from backend.beans.chat import Chat as ChatBean
+from backend.beans.message import Message as MessageBean
 
 # 定义泛型类型变量
 T = TypeVar('T')
@@ -30,34 +34,34 @@ class CRUDBase(Generic[ModelType, CreateSchemaType]):
         """
         return db.query(self.model).filter(self.model.id == id).first()
     
-    def get_multi(self, db: Session, *, skip: int = 0, limit: int = 100) -> List[ModelType]:
+    def getMulti(self, db: Session, *, skip: int = 0, limit: int = 100) -> List[ModelType]:
         """
         获取多条记录
         """
         return db.query(self.model).offset(skip).limit(limit).all()
     
-    def create(self, db: Session, *, obj_in: CreateSchemaType) -> ModelType:
+    def create(self, db: Session, *, objIn: CreateSchemaType) -> ModelType:
         """
         创建新记录
         """
-        obj_in_data = obj_in.dict()
-        db_obj = self.model(**obj_in_data)
-        db.add(db_obj)
+        objInData = objIn.dict()
+        dbObj = self.model(**objInData)
+        db.add(dbObj)
         db.commit()
-        db.refresh(db_obj)
-        return db_obj
+        db.refresh(dbObj)
+        return dbObj
     
-    def update(self, db: Session, *, db_obj: ModelType, obj_in: Dict[str, Any]) -> ModelType:
+    def update(self, db: Session, *, dbObj: ModelType, objIn: Dict[str, Any]) -> ModelType:
         """
         更新记录
         """
-        for field in obj_in:
-            if hasattr(db_obj, field):
-                setattr(db_obj, field, obj_in[field])
-        db.add(db_obj)
+        for field in objIn:
+            if hasattr(dbObj, field):
+                setattr(dbObj, field, objIn[field])
+        db.add(dbObj)
         db.commit()
-        db.refresh(db_obj)
-        return db_obj
+        db.refresh(dbObj)
+        return dbObj
     
     def remove(self, db: Session, *, id: str) -> ModelType:
         """
@@ -69,44 +73,112 @@ class CRUDBase(Generic[ModelType, CreateSchemaType]):
         return obj
 
 
+class CRUDOrg(CRUDBase[Org, CreateSchemaType]):
+    """组织CRUD操作"""
+    
+    def getByOrgCode(self, db: Session, orgCode: str) -> Optional[Org]:
+        """通过orgCode获取组织"""
+        return db.query(self.model).filter(self.model.orgCode == orgCode).first()
+    
+    def changePassword(self, db: Session, orgCode: str, newPassword: str) -> Optional[Org]:
+        """更改组织密码"""
+        org = self.getByOrgCode(db, orgCode)
+        if org:
+            from datetime import datetime
+            org.password = newPassword
+            org.passwordLastChanged = datetime.now()
+            org.isFirstLogin = False
+            db.add(org)
+            db.commit()
+            db.refresh(org)
+        return org
+    
+    def toBean(self, dbOrg: Org) -> OrgBean:
+        """将数据库组织对象转换为Bean对象"""
+        return OrgBean(
+            orgCode=dbOrg.orgCode,
+            org_name=dbOrg.orgName,
+            password=dbOrg.password,
+            password_last_changed=dbOrg.passwordLastChanged
+        )
+
+
 # 创建具体的CRUD类实例
 class CRUDSession(CRUDBase[SessionModel, CreateSchemaType]):
     """会话CRUD操作"""
     
-    def get_by_session_id(self, db: Session, session_id: str) -> Optional[SessionModel]:
-        """通过session_id获取会话"""
-        return db.query(self.model).filter(self.model.session_id == session_id).first()
+    def getBySessionId(self, db: Session, sessionId: str) -> Optional[SessionModel]:
+        """通过sessionId获取会话"""
+        return db.query(self.model).filter(self.model.sessionId == sessionId).first()
     
-    def get_by_organization(self, db: Session, organization_id: str) -> List[SessionModel]:
-        """获取机构的所有会话"""
-        return db.query(self.model).filter(self.model.organization_id == organization_id).all()
+    def getByOrg(self, db: Session, orgCode: str) -> Optional[SessionModel]:
+        """获取组织的会话（一个组织只有一个会话）"""
+        return db.query(self.model).filter(self.model.orgCode == orgCode).first()
+    
+    def toBean(self, dbSession: SessionModel, includeChats: bool = False) -> SessionBean:
+        """将数据库会话对象转换为Bean对象"""
+        sessionBean = SessionBean(created_at=dbSession.createdAt)
+        
+        if includeChats and dbSession.chats:
+            for dbChat in dbSession.chats:
+                chatBean = chat.toBean(dbChat, includeMessages=False)
+                sessionBean.add_chat(chatBean)
+                
+        return sessionBean
 
 
-class CRUDChat(CRUDBase[Chat, CreateSchemaType]):
+class CRUDChat(CRUDBase[ChatModel, CreateSchemaType]):
     """对话CRUD操作"""
     
-    def get_by_chat_id(self, db: Session, chat_id: str) -> Optional[Chat]:
-        """通过chat_id获取对话"""
-        return db.query(self.model).filter(self.model.chat_id == chat_id).first()
+    def getByChatId(self, db: Session, chatId: str) -> Optional[ChatModel]:
+        """通过chatId获取对话"""
+        return db.query(self.model).filter(self.model.chatId == chatId).first()
     
-    def get_by_session(self, db: Session, session_id: str) -> List[Chat]:
+    def getBySession(self, db: Session, sessionId: str) -> List[ChatModel]:
         """获取会话的所有对话"""
-        return db.query(self.model).filter(self.model.session_id == session_id).all()
+        return db.query(self.model).filter(self.model.sessionId == sessionId).all()
+    
+    def toBean(self, dbChat: ChatModel, includeMessages: bool = False) -> ChatBean:
+        """将数据库对话对象转换为Bean对象"""
+        chatBean = ChatBean(
+            chat_name=dbChat.chatName,
+            title=dbChat.title,
+            created_at=dbChat.createdAt
+        )
+        
+        # 如果指定了包含消息，则同时加载消息
+        if includeMessages and dbChat.messages:
+            for dbMessage in dbChat.messages:
+                messageBean = message.toBean(dbMessage)
+                chatBean.add_message(messageBean)
+                
+        return chatBean
 
 
-class CRUDMessage(CRUDBase[Message, CreateSchemaType]):
+class CRUDMessage(CRUDBase[MessageModel, CreateSchemaType]):
     """消息CRUD操作"""
     
-    def get_by_message_id(self, db: Session, message_id: str) -> Optional[Message]:
-        """通过message_id获取消息"""
-        return db.query(self.model).filter(self.model.message_id == message_id).first()
+    def getByMessageId(self, db: Session, messageId: str) -> Optional[MessageModel]:
+        """通过messageId获取消息"""
+        return db.query(self.model).filter(self.model.messageId == messageId).first()
     
-    def get_by_chat(self, db: Session, chat_id: str) -> List[Message]:
+    def getByChat(self, db: Session, chatId: str) -> List[MessageModel]:
         """获取对话的所有消息"""
-        return db.query(self.model).filter(self.model.chat_id == chat_id).all()
+        return db.query(self.model).filter(self.model.chatId == chatId).all()
+    
+    def toBean(self, dbMessage: MessageModel) -> MessageBean:
+        """将数据库消息对象转换为Bean对象"""
+        return MessageBean(
+            content=dbMessage.content,
+            sender=dbMessage.sender,
+            message_id=dbMessage.messageId,
+            status=dbMessage.status,
+            timestamp=dbMessage.timestamp
+        )
 
 
 # 创建CRUD实例
+org = CRUDOrg(Org)
 session = CRUDSession(SessionModel)
-chat = CRUDChat(Chat)
-message = CRUDMessage(Message) 
+chat = CRUDChat(ChatModel)
+message = CRUDMessage(MessageModel) 

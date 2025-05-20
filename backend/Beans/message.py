@@ -9,44 +9,44 @@ class Message:
         self,
         content: str,
         sender: str,
-        message_id: Optional[str] = None,
-        timestamp: Optional[datetime] = None,
-        chat_id: Optional[str] = None,
+        messageId: Optional[str],
+        status: str,
+        timestamp: datetime
     ):
         """
         初始化一条消息
         参数:
             content: 消息内容
             sender: 发送者标识
-            message_id: 消息唯一标识符
+            messageId: 消息唯一标识符
             timestamp: 发送时间，默认为当前时间
-            chat_id: 所属对话的ID
+            status: 判断消息状态：成功回复或者本地
         """
         self.content = content
         self.sender = sender
-        self.message_id = message_id
+        self.messageId = messageId
         self.timestamp = timestamp or datetime.now()
-        self.chat_id = chat_id
+        self.status = status
     
-    def to_dict(self) -> dict:
+    def toDict(self) -> dict:
         """将消息转换为字典格式"""
         return {
-            "message_id": self.message_id,
-            "content": self.content,
-            "sender": self.sender,
-            "timestamp": self.timestamp.isoformat(),
-            "chat_id": self.chat_id
+            "id": self.messageId,
+            "message": {
+                "role": self.sender,
+                "content": self.content,
+            },
+            "status": self.status,
         }
     
     @classmethod
-    def from_dict(cls, data: dict) -> "Message":
+    def fromDict(cls, data: dict) -> "Message":
         """从字典创建消息对象"""
         timestamp = datetime.fromisoformat(data["timestamp"]) if "timestamp" in data else None
         
         return cls(
-            content=data["content"],
-            sender=data["sender"],
-            message_id=data.get("message_id"),
+            content=data["message"]["content"],
+            sender=data["message"]["role"],
+            messageId=data["id"],
             timestamp=timestamp,
-            chat_id=data.get("chat_id")
         )

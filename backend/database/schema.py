@@ -3,9 +3,28 @@ from typing import List, Optional
 from datetime import datetime
 
 
+
+class OrgBase(BaseModel):
+    orgCode: str
+    orgName: str
+
+
+class OrgCreate(OrgBase):
+    password: str
+
+
+class OrgResponse(OrgBase):
+    isFirstLogin: bool
+    passwordLastChanged: datetime
+    
+    class Config:
+        orm_mode = True
+
+
 class MessageBase(BaseModel):
     content: str
     sender: str
+    status: str
 
 
 class MessageCreate(MessageBase):
@@ -13,8 +32,8 @@ class MessageCreate(MessageBase):
 
 
 class MessageResponse(MessageBase):
-    message_id: str
-    chat_id: str
+    messageId: str
+    chatId: str
     timestamp: datetime
 
     class Config:
@@ -22,17 +41,18 @@ class MessageResponse(MessageBase):
 
 
 class ChatBase(BaseModel):
+    chatName: str
     title: Optional[str] = None
 
 
 class ChatCreate(ChatBase):
-    pass
+    sessionId: str
 
 
 class ChatResponse(ChatBase):
-    chat_id: str
-    session_id: str
-    created_at: datetime
+    chatId: str
+    sessionId: str
+    createdAt: datetime
     messages: List[MessageResponse] = []
 
     class Config:
@@ -40,8 +60,7 @@ class ChatResponse(ChatBase):
 
 
 class SessionBase(BaseModel):
-    name: Optional[str] = None
-    organization_id: str
+    orgCode: str
 
 
 class SessionCreate(SessionBase):
@@ -49,8 +68,8 @@ class SessionCreate(SessionBase):
 
 
 class SessionResponse(SessionBase):
-    session_id: str
-    created_at: datetime
+    sessionId: str
+    createdAt: datetime
     chats: List[ChatResponse] = []
 
     class Config:
