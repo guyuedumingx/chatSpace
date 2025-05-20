@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Input, Button, Typography, message, Row, Col, Checkbox } from 'antd';
-import { UserOutlined, LockOutlined, EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons';
+import { Form, Input, Button, Typography, message, Row, Col, Checkbox, Modal } from 'antd';
+import { UserOutlined, LockOutlined, EyeInvisibleOutlined, EyeTwoTone, PhoneOutlined, IdcardOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useOrgStore } from '@/stores/OrgStore';
 import '@/pages/Login.css';
@@ -10,19 +10,33 @@ import ChangePasswordModal from '@/components/ChangePasswordModal';
 
 const { Title, Text } = Typography;
 
+// 登录表单接口定义
 interface LoginForm {
   orgCode: string;  // 机构号
   password: string; // 密码
+  ehrNo: string;    // EHR号
+  userName: string; // 姓名
+  phone: string;    // 联系电话
 }
 
+// 机构信息接口定义
 interface OrgInfo {
-  orgName: string;    //机构名称
-  isFirstLogin: boolean; //是否首次登录
-  lastPasswordChangeTime: string; //密码最后修改时间
+  orgName: string;    // 机构名称
+  isFirstLogin: boolean; // 是否首次登录
+  lastPasswordChangeTime: string; // 密码最后修改时间
 }
 
-// 以下是与后端集成的API函数
-// 获取机构信息
+// 错误类型定义
+interface ApiError {
+  code: string;
+  message: string;
+}
+
+/**
+ * 获取机构信息API
+ * @param orgCode 机构号
+ * @returns Promise<OrgInfo> 机构信息
+ */
 const getOrgInfo = async (orgCode: string): Promise<OrgInfo> => {
   // TODO: 替换为实际的API调用
   // 例如：return await fetch(`/api/org/${orgCode}`).then(res => res.json());
@@ -45,15 +59,26 @@ const getOrgInfo = async (orgCode: string): Promise<OrgInfo> => {
   });
 };
 
-// 登录API
-const loginApi = async (orgCode: string, password: string): Promise<{
+/**
+ * 登录API
+ * @param orgCode 机构号
+ * @param password 密码
+ * @param ehrNo EHR号
+ * @param userName 姓名
+ * @param phone 联系电话
+ * @returns Promise<登录结果>
+ */
+const loginApi = async (orgCode: string, password: string, ehrNo: string, userName: string, phone: string): Promise<{
   token: string;
   isFirstLogin: boolean;
   lastPasswordChangeTime: string;
   orgName: string;
 }> => {
   // TODO: 替换为实际的API调用
-  // 例如：return await fetch('/api/login', { method: 'POST', body: JSON.stringify({ orgCode, password }) }).then(res => res.json());
+  // 例如：return await fetch('/api/login', { 
+  //   method: 'POST', 
+  //   body: JSON.stringify({ orgCode, password, ehrNo, userName, phone }) 
+  // }).then(res => res.json());
   
   // 模拟数据
   return new Promise((resolve, reject) => {
@@ -64,7 +89,7 @@ const loginApi = async (orgCode: string, password: string): Promise<{
         resolve({
           token: 'mock-token-123456',
           isFirstLogin: false,
-          lastPasswordChangeTime: "2025-05-01", // 未过期的日期
+          lastPasswordChangeTime: "2025-01-01", // 未过期的日期
           orgName: "集约运营中心（广东）--测试"
         });
       } else {
@@ -75,7 +100,13 @@ const loginApi = async (orgCode: string, password: string): Promise<{
   });
 };
 
-// 修改密码API
+/**
+ * 修改密码API
+ * @param orgCode 机构号
+ * @param oldPassword 原密码
+ * @param newPassword 新密码
+ * @returns Promise<boolean> 是否修改成功
+ */
 const changePasswordApi = async (orgCode: string, oldPassword: string, newPassword: string): Promise<boolean> => {
   // TODO: 替换为实际的API调用
   // 例如：return await fetch('/api/change-password', { 
@@ -132,10 +163,14 @@ const Login: React.FC = () => {
     checkImageExists();
   }, []);
 
-  // 检查机构号并获取机构信息
+  /**
+   * 检查机构号并获取机构信息
+   * @param orgCode 机构号
+   */
   const checkOrgCode = async (orgCode: string) => {
     if (!orgCode) {
       setOrgInfo(null);
+      setCurrentOrgCode('');
       return;
     }
     
@@ -147,25 +182,47 @@ const Login: React.FC = () => {
     } catch (error: any) {
       console.error('获取机构信息失败:', error);
       setOrgInfo(null);
-      message.error(error.message || '机构号不存在');
+      setCurrentOrgCode('');
+      // 显示错误消息
+      Modal.error({
+        title: '机构号错误',
+        content: error.message || '机构号不存在',
+      });
     }
   };
 
-  // 检查密码是否需要修改
+  /**
+   * 检查密码是否需要修改
+   * @param lastPasswordChangeTime 最后修改密码时间
+   * @returns boolean 是否需要修改密码
+   */
   const checkPasswordChangeRequired = (lastPasswordChangeTime: string) => {
     const threeMonthsAgo = new Date();
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
     return new Date(lastPasswordChangeTime) < threeMonthsAgo;
   };
 
+  /**
+   * 处理登录提交
+   * @param values 登录表单值
+   */
   const handleSubmit = async (values: LoginForm) => {
     try {
       setLoading(true);
       
-      // 调用登录接口
-      const loginResult = await loginApi(values.orgCode, values.password);
+      // 先验证机构号是否存在
+      if (!orgInfo) {
+        Modal.error({
+          title: '登录错误',
+          content: '请先输入正确的机构号',
+        });
+        return;
+      }
       
-      // 将token存储到localStorage或状态管理中
+      // 调用登录接口
+      const loginResult = await loginApi(values.orgCode, values.password, values.ehrNo, values.userName, values.phone);
+      
+      // 将token存储到localStorage
       localStorage.setItem('token', loginResult.token);
       
       // 更新OrgStore中的状态
@@ -199,17 +256,31 @@ const Login: React.FC = () => {
     } catch (error: any) {
       console.error('登录失败:', error);
       if (error.code === 'ORG_NOT_FOUND') {
-        message.error('机构号不存在');
+        Modal.error({
+          title: '登录错误',
+          content: '机构号不存在',
+        });
       } else if (error.code === 'PASSWORD_ERROR') {
-        message.error('密码错误');
+        Modal.error({
+          title: '登录错误',
+          content: '密码错误',
+        });
       } else {
-        message.error(error.message || '登录失败，请稍后重试');
+        Modal.error({
+          title: '登录错误',
+          content: error.message || '登录失败，请稍后重试',
+        });
       }
     } finally {
       setLoading(false);
     }
   };
 
+  /**
+   * 处理密码修改成功
+   * @param oldPassword 原密码
+   * @param newPassword 新密码
+   */
   const handlePasswordChangeSuccess = async (oldPassword: string, newPassword: string) => {
     try {
       // 调用修改密码API
@@ -229,13 +300,22 @@ const Login: React.FC = () => {
       // 跳转到chat页面
       navigate('/chat');
     } catch (error: any) {
-      message.error(error.message || '密码修改失败');
+      Modal.error({
+        title: '密码修改错误',
+        content: error.message || '密码修改失败',
+      });
     }
   };
 
+  /**
+   * 处理修改密码按钮点击
+   */
   const handleChangePassword = () => {
     if (!currentOrgCode) {
-      message.warning('请先输入机构号');
+      Modal.warning({
+        title: '提示',
+        content: '请先输入机构号',
+      });
       return;
     }
     setIsForceChange(false);
@@ -309,6 +389,39 @@ const Login: React.FC = () => {
                   size="large"
                   className="login-input"
                   iconRender={visible => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
+                />
+              </Form.Item>
+              <Form.Item
+                name="ehrNo"
+                rules={[{ required: true, message: '请输入EHR号' }]}
+              >
+                <Input
+                  prefix={<IdcardOutlined className="site-form-item-icon" />}
+                  placeholder="请输入EHR号"
+                  size="large"
+                  className="login-input"
+                />
+              </Form.Item>
+              <Form.Item
+                name="userName"
+                rules={[{ required: true, message: '请输入姓名' }]}
+              >
+                <Input
+                  prefix={<UserOutlined className="site-form-item-icon" />}
+                  placeholder="请输入姓名"
+                  size="large"
+                  className="login-input"
+                />
+              </Form.Item>
+              <Form.Item
+                name="phone"
+                rules={[{ required: true, message: '请输入联系电话' }]}
+              >
+                <Input
+                  prefix={<PhoneOutlined className="site-form-item-icon" />}
+                  placeholder="请输入联系电话"
+                  size="large"
+                  className="login-input"
                 />
               </Form.Item>
               <Form.Item>

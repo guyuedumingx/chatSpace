@@ -40,8 +40,8 @@ export const useOrgStore = create<OrgState>((set: any) => ({
     localStorage.removeItem('token');
   },
 
-  setOrgStore: (newState: Partial<OrgState>) => {
-    set((state: OrgState) => ({
+  setOrgStore: (newState: Partial<OrgState>) => {    //设置机构状态
+    set((state: OrgState) => ({ 
       ...state,
       ...newState
     }));
