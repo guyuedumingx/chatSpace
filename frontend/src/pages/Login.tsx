@@ -1,100 +1,186 @@
-import React, { useState, useEffect } from 'react';
-import { Form, Input, Button, Typography, message, Row, Col, Checkbox } from 'antd';
-import { UserOutlined, LockOutlined, EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons';
+import React, { useState } from 'react';
+import { Form, Input, Button, Typography, message, Row, Col, Checkbox, Modal } from 'antd';
+import { UserOutlined, LockOutlined, EyeInvisibleOutlined, EyeTwoTone, PhoneOutlined, IdcardOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useOrgStore } from '@/stores/OrgStore';
 import '@/pages/Login.css';
 // 正确导入图片
 import bankBuilding from '@/assets/bank-building1.jpg';
+import ChangePasswordModal from '@/components/ChangePasswordModal';
+import { orgApi } from '@/api/org';
 
 const { Title, Text } = Typography;
 
+// 登录表单接口定义
 interface LoginForm {
-  orgCode: string;
-  password: string;
+  orgCode: string;  // 机构号
+  password: string; // 密码
+  ehrNo: string;    // EHR号
+  userName: string; // 姓名
+  phone: string;    // 联系电话
+}
+
+// 机构信息接口定义
+interface OrgInfo {
+  orgName: string;    // 机构名称
+  isFirstLogin: boolean; // 是否首次登录
+  lastPasswordChangeTime: string; // 密码最后修改时间
 }
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const [remember, setRemember] = useState(false);
-  const [bankImageExists, setBankImageExists] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [orgInfo, setOrgInfo] = useState<OrgInfo | null>(null);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [isFirstLogin, setIsFirstLogin] = useState(false);
+  const [isForceChange, setIsForceChange] = useState(false);
+  const [currentOrgCode, setCurrentOrgCode] = useState<string>('');
+  const [messageApi, contextHolder] = message.useMessage();
+
   
   // 获取OrgStore中的login函数
-  const login = useOrgStore((state: any) => state.login);
+  const loginStore = useOrgStore((state: any) => state.login);
 
-  useEffect(() => {
-    // 检查银行图片是否存在
-    const checkImageExists = async () => {
-      try {
-        // 尝试直接使用导入的图片
-        if (bankBuilding) {
-          setBankImageExists(true);
-        } else {
-          setBankImageExists(false);
-        }
-      } catch (error) {
-        setBankImageExists(false);
-        console.error('Failed to load bank image:', error);
-      }
-    };
+  /**
+   * 检查机构号并获取机构信息
+   * @param orgCode 机构号
+   */
+  const checkOrgCode = async (orgCode: string) => {
+    if (!orgCode) {
+      setOrgInfo(null);
+      setCurrentOrgCode('');
+      return;
+    }
     
-    checkImageExists();
-  }, []);
-
-  const handleSubmit = async (values: LoginForm) => {
     try {
-      const success = await login(values.orgCode, values.password);
-      
-      if (success) {
-        if (remember) {
-          localStorage.setItem('rememberedOrgCode', values.orgCode);
-        } else {
-          localStorage.removeItem('rememberedOrgCode');
+      // 调用后端接口获取机构信息
+      const orgData = await orgApi.getOrgInfo(orgCode);
+      setOrgInfo(orgData);
+      setCurrentOrgCode(orgCode);
+    } catch (error: any) {
+      console.error('获取机构信息失败:', error);
+      setOrgInfo(null);
+      setCurrentOrgCode('');
+      form.setFields([
+        {
+          name: 'orgCode',
+          errors: [error.message || '机构号不存在']
         }
-        message.success('登录成功');
-        navigate('/chat');
-      } else {
-        message.error('机构号或密码错误');
-      }
-    } catch (error) {
-      message.error('登录失败，请稍后再试');
-      console.error('Login error:', error);
+      ]);
     }
   };
 
+  /**
+   * 检查密码是否需要修改
+   * @param lastPasswordChangeTime 最后修改密码时间
+   * @returns boolean 是否需要修改密码
+   */
+  const checkPasswordChangeRequired = (lastPasswordChangeTime: string) => {
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    return new Date(lastPasswordChangeTime) < threeMonthsAgo;
+  };
+
+  /**
+   * 处理登录提交
+   * @param values 登录表单值
+   */
+  const handleSubmit = async (values: LoginForm) => {
+    try {
+      setLoading(true);
+      
+      // 先验证机构号是否存在
+      if (!orgInfo) {
+        form.setFields([
+          {
+            name: 'orgCode',
+            errors: ['请先输入正确的机构号']
+          }
+        ]);
+        return;
+      }
+      
+      // 调用登录接口
+      const loginResult = await loginStore(values);
+      // 检查是否需要修改密码
+      const isFirstLogin = loginResult.isFirstLogin;
+      const needChangePassword = isFirstLogin || 
+        checkPasswordChangeRequired(loginResult.lastPasswordChangeTime);
+
+      if (needChangePassword) {
+        setIsFirstLogin(isFirstLogin);
+        setIsForceChange(true);
+        setShowChangePassword(true);
+        setCurrentOrgCode(values.orgCode);
+      } else {
+        messageApi.success('登录成功');
+        // 使用navigate跳转到chat页面
+        navigate('/chat');
+      }
+    } catch (error: any) {
+      messageApi.error('登录失败，请检查机构号、密码是否正确');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * 处理密码修改成功
+   * @param oldPassword 原密码
+   * @param newPassword 新密码
+   */
+  const handlePasswordChangeSuccess = async (oldPassword: string, newPassword: string) => {
+    try {
+      // 调用修改密码API
+      await orgApi.changePassword(currentOrgCode, oldPassword, newPassword);
+      
+      setShowChangePassword(false);
+      setIsForceChange(false);
+      messageApi.success('密码修改成功');
+      
+      // 跳转到chat页面
+      navigate('/chat');
+    } catch (error: any) {
+      Modal.error({
+        title: '密码修改错误',
+        content: error.message || '密码修改失败',
+      });
+    }
+  };
+
+  /**
+   * 处理修改密码按钮点击
+   */
   const handleChangePassword = () => {
-    message.info('登录后可在个人中心修改密码');
+    if (!currentOrgCode) {
+      Modal.warning({
+        title: '提示',
+        content: '请先输入机构号',
+      });
+      return;
+    }
+    setIsForceChange(false);
+    setShowChangePassword(true);
   };
 
   return (
     <div className="login-container">
+      {contextHolder}
       <Row className="login-row">
-        <Col flex="50%" className="login-left">
+        <Col flex="55%" className="login-left">
           <div className="bank-building-container">
-            {bankImageExists ? (
-              <>
-                <img src={bankBuilding} alt="中国银行大楼" className="bank-building-image" />
-              </>
-            ) : (
-              <div style={{ color: 'white', textAlign: 'center', padding: '20px' }}>
-                <div style={{ fontSize: '60px', marginBottom: '20px' }}>
-                  <UserOutlined />
-                </div>
-                <Title level={3} style={{ color: 'white', margin: 0 }}>中国银行</Title>
-                <Title level={4} style={{ color: 'white', margin: 0 }}>远程核准线上咨询平台</Title>
-              </div>
-            )}
+            <img src={bankBuilding} alt="中国银行大楼" className="bank-building-image" />
           </div>
         </Col>
-        <Col flex="50%" className="login-right">
+        <Col flex="45%" className="login-right">
           <div className="login-form-container">
             <div className="login-header">
               <div className="platform-title-container">
                 <Title level={2} className="login-title">远程核准线上咨询平台</Title>
               </div>
             </div>
-            
             <Form
               form={form}
               name="login"
@@ -105,6 +191,11 @@ const Login: React.FC = () => {
               }}
               className="login-form"
             >
+              {orgInfo && (
+                <div className="org-info">
+                  <Text type="secondary">你好！{orgInfo.orgName}</Text>
+                </div>
+              )}
               <Form.Item
                 name="orgCode"
                 rules={[{ required: true, message: '请输入机构号' }]}
@@ -114,9 +205,14 @@ const Login: React.FC = () => {
                   placeholder="请输入机构号"
                   size="large"
                   className="login-input"
+                  onBlur={(e) => checkOrgCode(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Tab') {
+                      checkOrgCode(e.currentTarget.value);
+                    }
+                  }}
                 />
               </Form.Item>
-
               <Form.Item
                 name="password"
                 rules={[{ required: true, message: '请输入密码' }]}
@@ -129,12 +225,59 @@ const Login: React.FC = () => {
                   iconRender={visible => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
                 />
               </Form.Item>
-
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    name="ehrNo"
+                    rules={[
+                      { required: true, message: '请输入EHR号' },
+                      { pattern: /^\d+$/, message: 'EHR号只能输入数字' }
+                    ]}
+                  >
+                    <Input
+                      prefix={<IdcardOutlined className="site-form-item-icon" />}
+                      placeholder="请输入EHR号"
+                      size="large"
+                      className="login-input"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="userName"
+                    rules={[
+                      { required: true, message: '请输入姓名' },
+                      { pattern: /^[\u4e00-\u9fa5]+$/, message: '姓名只能输入汉字' }
+                    ]}
+                  >
+                    <Input
+                      prefix={<UserOutlined className="site-form-item-icon" />}
+                      placeholder="请输入姓名"
+                      size="large"
+                      className="login-input"
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+              <Form.Item
+                name="phone"
+                rules={[
+                  { required: true, message: '请输入联系电话' },
+                  { pattern: /^\d+$/, message: '联系电话只能输入数字' }
+                ]}
+              >
+                <Input
+                  prefix={<PhoneOutlined className="site-form-item-icon" />}
+                  placeholder="请输入联系电话"
+                  size="large"
+                  className="login-input"
+                />
+              </Form.Item>
               <Form.Item>
                 <Row justify="space-between" align="middle">
                   <Col>
-                    <Checkbox 
-                      checked={remember} 
+                    <Checkbox
+                      checked={remember}
                       onChange={(e) => setRemember(e.target.checked)}
                     >
                       <Text className="remember-text">记住账号</Text>
@@ -147,7 +290,6 @@ const Login: React.FC = () => {
                   </Col>
                 </Row>
               </Form.Item>
-
               <Form.Item>
                 <Button
                   type="primary"
@@ -155,6 +297,7 @@ const Login: React.FC = () => {
                   size="large"
                   block
                   className="login-button"
+                  loading={loading}
                 >
                   登录
                 </Button>
@@ -167,6 +310,17 @@ const Login: React.FC = () => {
           </div>
         </Col>
       </Row>
+      <ChangePasswordModal
+        visible={showChangePassword}
+        onCancel={() => {
+          if (!isForceChange) {
+            setShowChangePassword(false);
+          }
+        }}
+        onSuccess={(oldPassword, newPassword) => handlePasswordChangeSuccess(oldPassword, newPassword)}
+        isFirstLogin={isFirstLogin}
+        isForceChange={isForceChange}
+      />
     </div>
   );
 };

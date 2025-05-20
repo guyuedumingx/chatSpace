@@ -5,11 +5,12 @@ import { createStyles } from 'antd-style';
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOrgStore } from '@/stores/OrgStore';
-import { chatApi, API_BASE_URL, BackendMessageItem, MessageHistoryItem } from '@/api/chat';
+import { chatApi, BackendMessageItem, ContactInfo } from '@/api/chat';
+import { API_BASE_URL } from '@/api/index';
 import ChatSider from '@/components/ChatSider';
 import ChatList from '@/components/ChatList';
 import ChatSender from '@/components/ChatSender';
-
+import SatisfactionSurvey from '@/components/SatisfactionSurvey';
 // 扩展BubbleDataType以确保类型兼容性
 interface ExtendedBubbleDataType extends BubbleDataType {
   role: string;
@@ -75,6 +76,12 @@ const useStyle = createStyles(({ token, css }) => {
       padding: ${token.paddingLG}px;
       gap: 16px;
     `,
+    endBtn: css`
+      position: absolute;
+      right: 32px;
+      top: 32px;
+      z-index: 10;
+    `
   };
 });
 
@@ -87,6 +94,33 @@ const Chat: React.FC = () => {
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [curConversation, setCurConversation] = useState<string>('');
   const [hotTopics, setHotTopics] = useState<HotTopicItem[]>([]);
+  const [messages, setMessages] = useState<MessageInfo[]>([]);
+  const [surveyVisible, setSurveyVisible] = useState(false);
+  const [contactInfo, setContactInfo] = useState<ContactInfo>({ contactName: '', contactPhone: '' });
+  const surveyTimer = useRef<NodeJS.Timeout | null>(null);
+  const [messageApi, contextHolder] = message.useMessage();
+
+  // 发送消息时重置3分钟定时器
+  const resetSurveyTimer = () => {
+    if (surveyTimer.current) clearTimeout(surveyTimer.current);
+    surveyTimer.current = setTimeout(() => {
+      handleShowSurvey();
+    }, 3 * 60 * 1000);
+  };
+
+  // 问卷提交
+  const handleSurveySubmit = async (data: { solved: 'yes' | 'no'; comment?: string }) => {
+    try {
+      await chatApi.submitSurvey({
+        ...data,
+        session_key: curConversation,
+        // user_id: 可选
+      });
+      messageApi.success('感谢您的反馈！');
+    } catch {
+      messageApi.error('提交失败，请稍后重试');
+    }
+  };
 
   // 使用XAgent但忽略具体类型，只关注功能接口
   const [agent] = useXAgent({
@@ -98,7 +132,7 @@ const Chat: React.FC = () => {
 
   // 使用useXChat，但使用@ts-expect-error暂时忽略类型检查
   // @ts-expect-error - 类型不兼容但功能正常，后续会重构解决
-  const { onRequest, messages, setMessages } = useXChat<ExtendedBubbleDataType>({
+  const { onRequest, messages: xChatMessages, setMessages: setXChatMessages } = useXChat<ExtendedBubbleDataType>({
     agent,
     requestFallback: (_: unknown, { error }: { error: Error }) => {
       if (error.name === 'AbortError') {
@@ -158,6 +192,18 @@ const Chat: React.FC = () => {
     }));
   };
 
+  // 拉取历史
+  const fetchHistory = async (conversationKey?: string) => {
+    const key = conversationKey || curConversation;
+    if (!key) return;
+    try {
+      const historyFromApi = await chatApi.getMessageHistory(key) as BackendMessageItem[];
+      setMessages(mapApiHistoryToMessageInfo(historyFromApi));
+    } catch (error) {
+      setMessages([]);
+    }
+  };
+
   useEffect(() => {
     const initData = async () => {
       try {
@@ -174,110 +220,118 @@ const Chat: React.FC = () => {
         if (typedConversations && typedConversations.length > 0) {
           const firstConversationKey = typedConversations[0].key;
           setCurConversation(firstConversationKey);
-          const historyFromApi = await chatApi.getMessageHistory(firstConversationKey) as BackendMessageItem[];
-          setMessages(mapApiHistoryToMessageInfo(historyFromApi));
+          fetchHistory(firstConversationKey);
         } else {
           setMessages([]);
         }
       } catch (error) {
         console.error("Failed to initialize chat data:", error);
-        message.error("初始化聊天数据失败");
+        messageApi.error("初始化聊天数据失败");
         setMessages([]);
       }
     };
     initData();
-  }, [setMessages]);
+  }, []);
 
-  // 当用户点击自定义提示时，发送提示文本作为新消息
+  // 切换会话时拉取历史
+  useEffect(() => {
+    if (curConversation) {
+      fetchHistory(curConversation);
+    }
+    resetSurveyTimer();
+    return () => {
+      if (surveyTimer.current) clearTimeout(surveyTimer.current);
+    };
+    // eslint-disable-next-line
+  }, [curConversation]);
+
+  // 发送消息
+  const onSubmit = async (val: string) => {
+    if (!val) return;
+    if (loading) {
+      messageApi.error('请求进行中，请稍后...');
+      return;
+    }
+    // 1. 本地追加用户消息（loading）
+    const userMsg: MessageInfo = {
+      id: `msg_${Date.now()}`,
+      message: { role: 'user', content: val },
+      status: 'loading'
+    };
+    setMessages(prev => [...prev, userMsg]);
+
+    // 2. 发送到后端，获取assistant回复
+    try {
+      const assistantMsg = await chatApi.sendMessageToHistory(curConversation, val);
+      // 3. 更新用户消息为success，追加assistant消息
+      setMessages(prev => {
+        // 把最后一条用户消息的status设为success
+        const updated = prev.map((msg, idx) =>
+          idx === prev.length - 1 ? { ...msg, status: 'success' } : msg
+        );
+        // 追加assistant消息
+        return [
+          ...updated,
+          {
+            id: assistantMsg.id || `assistant_${Date.now()}`,
+            message: {
+              role: 'assistant',
+              content: assistantMsg.content,
+              ...(assistantMsg.custom_prompts ? { custom_prompts: assistantMsg.custom_prompts } : {})
+            },
+            status: 'success'
+          }
+        ];
+      });
+      resetSurveyTimer();
+    } catch (e) {
+      // 失败时将最后一条用户消息标记为error
+      setMessages(prev => prev.map((msg, idx) =>
+        idx === prev.length - 1 ? { ...msg, status: 'error' } : msg
+      ));
+      messageApi.error('发送失败');
+    }
+  };
+
+  // 自定义提示点击
   const handleCustomPromptClick = (promptText: string) => {
     onSubmit(promptText);
   };
 
-  // 处理消息提交
-  const onSubmit = (val: string) => {
-    if (!val) return;
-    if (loading) {
-      message.error('请求进行中，请稍后...');
-      return;
-    }
-    
-    // 不使用stream，一次性返回结果
-    onRequest({ 
-      stream: false, 
-      message: { role: 'user', content: val } as ExtendedBubbleDataType
-    });
-    
-    // 在用户发送消息后，立即保存到历史记录
-    saveMessageHistory(val);
-  };
-
-  // 保存聊天历史记录
-  const saveMessageHistory = async (userMessage: string) => {
+  // 结束对话按钮点击或超时弹窗
+  const handleShowSurvey = async () => {
     if (!curConversation) return;
-    
-    try {
-      // 收集成功状态的消息并格式化为正确的类型
-      const successMessages: MessageHistoryItem[] = messages
-        .filter(m => m.status === 'success')
-        .map(m => ({
-          id: String(m.id),
-          message: {
-            role: m.message.role,
-            content: m.message.content || '', // 确保content不为undefined
-            ...(m.message.custom_prompts ? { custom_prompts: m.message.custom_prompts } : {})
-          },
-          status: 'success'
-        }));
-      
-      // 创建新用户消息
-      const newUserMessage: MessageHistoryItem = {
-        id: `msg_${Date.now()}`,
-        message: {
-          role: 'user',
-          content: userMessage
-        },
-        status: 'success'
-      };
-      
-      // 添加新的用户消息并保存
-      const updatedMessages: MessageHistoryItem[] = [
-        ...successMessages,
-        newUserMessage
-      ];
-      
-      // 调用API保存
-      await chatApi.saveMessageHistory(curConversation, updatedMessages);
-    } catch (error) {
-      console.error("Failed to save message history:", error);
-    }
+    const info = await chatApi.getContactInfo(curConversation);
+    setContactInfo(info);
+    setSurveyVisible(true);
   };
 
   const handleLogout = () => {
     logout();
-    message.success('已退出登录');
+    messageApi.success('已退出登录');
     navigate('/login');
   };
 
   return (
     <div className={styles.layout}>
+      {contextHolder}
       <ChatSider
         conversations={conversations}
         curConversation={curConversation}
         orgName={orgName}
         setConversations={setConversations}
         setCurConversation={setCurConversation}
-        // @ts-expect-error - 类型不完全兼容但功能正常
         setMessages={setMessages}
         abortController={abortController}
         handleLogout={handleLogout}
       />
       <div className={styles.chat}>
         <ChatList 
-          // @ts-expect-error - 类型不完全兼容但功能正常
           messages={messages}
           hotTopics={hotTopics}
           onSubmit={onSubmit}
           handleCustomPromptClick={handleCustomPromptClick}
+          handleEndChat={handleShowSurvey}
         />
         <ChatSender
           onSubmit={onSubmit}
@@ -287,6 +341,13 @@ const Chat: React.FC = () => {
           }}
         />
       </div>
+      <SatisfactionSurvey
+        visible={surveyVisible}
+        onClose={() => setSurveyVisible(false)}
+        onSubmit={handleSurveySubmit}
+        contactName={contactInfo.contactName}
+        contactPhone={contactInfo.contactPhone}
+      />
     </div>
   );
 };

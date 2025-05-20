@@ -1,12 +1,11 @@
 import {
+  CloseOutlined,
   CopyOutlined,
   FireOutlined,
-  LikeOutlined,
 } from '@ant-design/icons';
 import { Bubble, Prompts, Welcome } from '@ant-design/x';
 import type { BubbleDataType } from '@ant-design/x/es/bubble/BubbleList';
-import type { MessageInfo as XChatMessageInfo } from '@ant-design/x/es/use-x-chat';
-import { Button, Flex, Space, Spin, message } from 'antd';
+import { Button, Flex, Space, Spin, message, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
 import React from 'react';
 import logo from '@/assets/logo.svg';
@@ -96,8 +95,10 @@ const ChatList: React.FC<ChatListProps> = ({
   hotTopics,
   onSubmit,
   handleCustomPromptClick,
+  handleEndChat,
 }) => {
   const { styles } = useStyle();
+  const [messageApi, contextHolder] = message.useMessage();
 
   const renderCustomPrompts = (msg: ExtendedBubbleDataType) => {
     if (!msg.custom_prompts || msg.custom_prompts.length === 0) {
@@ -173,20 +174,27 @@ const ChatList: React.FC<ChatListProps> = ({
                       本平台仅供内部使用，严禁发送任何客户信息/涉密信息/敏感信息
                     </div>
                     <div style={{ display: 'flex' }}>
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<CopyOutlined />}
-                        title="复制"
+                      <Tooltip title="复制">
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<CopyOutlined />}
+                          title="复制"
                         onClick={(e) => {
                           e.stopPropagation();
                           if (contentText) {
                             navigator.clipboard.writeText(contentText);
-                            message.success('复制成功');
+                            messageApi.success('复制成功');
                           }
-                        }}
-                      />
-                      <Button type="text" size="small" icon={<LikeOutlined />} title="满意" />
+                          }}
+                        />
+                      </Tooltip>
+                      {/* <Tooltip title="满意">
+                        <Button type="text" size="small" icon={<LikeOutlined />} title="满意" />
+                      </Tooltip> */}
+                      <Tooltip title="结束对话">
+                        <Button type="text" size="small" icon={<CloseOutlined />} onClick={handleEndChat} />
+                      </Tooltip>
                     </div>
                   </div>
                 );
@@ -202,6 +210,7 @@ const ChatList: React.FC<ChatListProps> = ({
 
   return (
     <div className={styles.chatList}>
+      {contextHolder}
       <Space direction="vertical" size={16} className={styles.placeholder}>
         <Welcome
           icon={<img src={bot} alt="bot" />}

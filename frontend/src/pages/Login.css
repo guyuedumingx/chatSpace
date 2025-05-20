@@ -18,7 +18,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f5f5f5; /* 背景图加载前显示的浅灰色 */
+  background-color: #f5f5f5;
+}
+
+.gradient-overlay {
+  display: none;
 }
 
 .bank-building-container {
@@ -31,16 +35,12 @@
   justify-content: center;
 }
 
-.gradient-overlay {
-  display: none;
-}
-
 .bank-building-image {
   width: 100%;
   height: 100%;
-  object-fit: cover; /* 填满容器 */
-  object-position: center 70%; /* 居中显示 */
-  filter: none; /* 保持原图颜色 */
+  object-fit: cover;
+  object-position: center 70%;
+  filter: none;
   max-width: 100%;
   max-height: 100%;
 }
@@ -54,7 +54,7 @@
   box-shadow: -5px 0 15px rgba(0, 0, 0, 0.15);
   position: relative;
   z-index: 2;
-  min-width: 400px; /* 确保右侧不会太窄 */
+  min-width: 400px;
 }
 
 .login-form-container {
@@ -65,7 +65,7 @@
 
 .login-header {
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: 32px;
 }
 
 .platform-title-container {
@@ -155,6 +155,52 @@
   font-size: 12px;
 }
 
+.org-info {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+/* 新增字段的样式 */
+.ant-form-item {
+  margin-bottom: 16px;
+}
+
+.ant-row .ant-col .ant-form-item {
+  margin-bottom: 0;
+}
+
+.ant-input-affix-wrapper {
+  border-radius: 4px;
+}
+
+.ant-input-affix-wrapper:hover {
+  border-color: #40a9ff;
+}
+
+.ant-input-affix-wrapper-focused {
+  border-color: #40a9ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+.ant-form-item-has-error .ant-input-affix-wrapper {
+  border-color: #ff4d4f;
+}
+
+.ant-form-item-has-error .ant-input-affix-wrapper:hover {
+  border-color: #ff7875;
+}
+
+.ant-form-item-has-error .ant-input-affix-wrapper-focused {
+  border-color: #ff4d4f;
+  box-shadow: 0 0 0 2px rgba(255, 77, 79, 0.2);
+}
+
+.ant-form-item-explain-error {
+  color: #ff4d4f;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
 /* 响应式布局 */
 @media (max-width: 992px) {
   .login-row {
@@ -182,4 +228,17 @@
     width: 100%;
     min-height: 100vh;
   }
+}
+
+.login-form .ant-form-item {
+  margin-bottom: 20px;
+}
+
+.login-form .ant-row {
+  margin-bottom: 8px !important;
+}
+
+/* 保证EHR和姓名输入行与下方联系电话输入框之间的间距 */
+.login-form .ant-row + .ant-form-item {
+  margin-top: 0px;
 } 
