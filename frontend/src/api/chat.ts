@@ -35,6 +35,18 @@ export interface BackendMessageItem {
   }>;
 }
 
+export interface ContactInfo {
+  contactName: string;
+  contactPhone: string;
+}
+
+export interface SurveyData {
+  solved: 'yes' | 'no';
+  comment?: string;
+  session_key: string;
+  user_id?: string;
+}
+
 export const sendMessage = async (message: string): Promise<ChatResponse> => {
   const response = await axios.post(`${API_BASE_URL}/chat`, { message });
   return response.data;
@@ -70,20 +82,27 @@ export const chatApi = {
   // 获取消息历史
   getMessageHistory: async (conversationKey: string) => {
     const response = await axios.get(`${API_BASE_URL}/message_history/${conversationKey}`);
-    console.log(response.data)
     return response.data;
   },
 
-  // 保存消息历史，转换为后端期望的格式
-  saveMessageHistory: async (conversationKey: string, messages: MessageHistoryItem[]) => {
-    // 将前端的MessageHistoryItem转换为后端期望的格式
-    const backendMessages = messages.map(msg => ({
-      id: String(msg.id),
-      role: msg.message.role,
-      content: msg.message.content,
-      ...(msg.message.custom_prompts ? { custom_prompts: msg.message.custom_prompts } : {})
-    }));
-    const response = await axios.post(`${API_BASE_URL}/message_history/${conversationKey}`, backendMessages);
+  // 新增：发送一条用户消息到历史
+  sendMessageToHistory: async (conversationKey: string, userMessage: string) => {
+    const response = await axios.post(`${API_BASE_URL}/message_history/${conversationKey}`, {
+      role: 'user',
+      content: userMessage
+    });
+    return response.data;
+  },
+
+  // 获取业务联系人信息
+  getContactInfo: async (sessionKey: string): Promise<ContactInfo> => {
+    const response = await axios.get(`${API_BASE_URL}/contact_info?session_key=${sessionKey}`);
+    return response.data;
+  },
+
+  // 提交满意度调查
+  submitSurvey: async (data: SurveyData) => {
+    const response = await axios.post(`${API_BASE_URL}/survey`, data);
     return response.data;
   },
 };
