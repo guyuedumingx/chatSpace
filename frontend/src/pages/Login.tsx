@@ -183,11 +183,12 @@ const Login: React.FC = () => {
       console.error('获取机构信息失败:', error);
       setOrgInfo(null);
       setCurrentOrgCode('');
-      // 显示错误消息
-      Modal.error({
-        title: '机构号错误',
-        content: error.message || '机构号不存在',
-      });
+      form.setFields([
+        {
+          name: 'orgCode',
+          errors: [error.message || '机构号不存在']
+        }
+      ]);
     }
   };
 
@@ -212,10 +213,12 @@ const Login: React.FC = () => {
       
       // 先验证机构号是否存在
       if (!orgInfo) {
-        Modal.error({
-          title: '登录错误',
-          content: '请先输入正确的机构号',
-        });
+        form.setFields([
+          {
+            name: 'orgCode',
+            errors: ['请先输入正确的机构号']
+          }
+        ]);
         return;
       }
       
@@ -256,20 +259,21 @@ const Login: React.FC = () => {
     } catch (error: any) {
       console.error('登录失败:', error);
       if (error.code === 'ORG_NOT_FOUND') {
-        Modal.error({
-          title: '登录错误',
-          content: '机构号不存在',
-        });
+        form.setFields([
+          {
+            name: 'orgCode',
+            errors: ['机构号不存在']
+          }
+        ]);
       } else if (error.code === 'PASSWORD_ERROR') {
-        Modal.error({
-          title: '登录错误',
-          content: '密码错误',
-        });
+        form.setFields([
+          {
+            name: 'password',
+            errors: ['密码错误']
+          }
+        ]);
       } else {
-        Modal.error({
-          title: '登录错误',
-          content: error.message || '登录失败，请稍后重试',
-        });
+        message.error(error.message || '登录失败，请稍后重试');
       }
     } finally {
       setLoading(false);
@@ -391,39 +395,56 @@ const Login: React.FC = () => {
                   iconRender={visible => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
                 />
               </Form.Item>
-              <Form.Item
-                name="ehrNo"
-                rules={[{ required: true, message: '请输入EHR号' }]}
-              >
-                <Input
-                  prefix={<IdcardOutlined className="site-form-item-icon" />}
-                  placeholder="请输入EHR号"
-                  size="large"
-                  className="login-input"
-                />
-              </Form.Item>
-              <Form.Item
-                name="userName"
-                rules={[{ required: true, message: '请输入姓名' }]}
-              >
-                <Input
-                  prefix={<UserOutlined className="site-form-item-icon" />}
-                  placeholder="请输入姓名"
-                  size="large"
-                  className="login-input"
-                />
-              </Form.Item>
-              <Form.Item
-                name="phone"
-                rules={[{ required: true, message: '请输入联系电话' }]}
-              >
-                <Input
-                  prefix={<PhoneOutlined className="site-form-item-icon" />}
-                  placeholder="请输入联系电话"
-                  size="large"
-                  className="login-input"
-                />
-              </Form.Item>
+              <Row gutter={16}>
+                <Col span={6}>
+                  <Form.Item
+                    name="ehrNo"
+                    rules={[
+                      { required: true, message: '请输入EHR号' },
+                      { pattern: /^\d+$/, message: 'EHR号只能输入数字' }
+                    ]}
+                  >
+                    <Input
+                      prefix={<IdcardOutlined className="site-form-item-icon" />}
+                      placeholder="请输入EHR号"
+                      size="middle"
+                      className="login-input"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={6}>
+                  <Form.Item
+                    name="userName"
+                    rules={[
+                      { required: true, message: '请输入姓名' },
+                      { pattern: /^[\u4e00-\u9fa5]+$/, message: '姓名只能输入汉字' }
+                    ]}
+                  >
+                    <Input
+                      prefix={<UserOutlined className="site-form-item-icon" />}
+                      placeholder="请输入姓名"
+                      size="middle"
+                      className="login-input"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="phone"
+                    rules={[
+                      { required: true, message: '请输入联系电话' },
+                      { pattern: /^\d+$/, message: '联系电话只能输入数字' }
+                    ]}
+                  >
+                    <Input
+                      prefix={<PhoneOutlined className="site-form-item-icon" />}
+                      placeholder="请输入联系电话"
+                      size="middle"
+                      className="login-input"
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
               <Form.Item>
                 <Row justify="space-between" align="middle">
                   <Col>
