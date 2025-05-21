@@ -154,6 +154,7 @@ def generate_assistant_reply(user_content: str):
     return final_response_content, prompts_for_user
 
 @router.get("/sessions/{orgCode}")
+<<<<<<< HEAD
 async def get_sessions(orgCode: str, db: Session = Depends(get_db)):
     # 获取机构对应的会话
     db_session = session_crud.getByOrg(db, orgCode)
@@ -223,6 +224,18 @@ async def create_session(data: dict, db: Session = Depends(get_db)):
         "key": db_chat.chatId,
         "label": db_chat.title or db_chat.chatName,
         "group": "今天"
+=======
+async def get_sessions(orgCode: str):
+    return sessions
+
+@router.post("/sessions/{orgCode}")
+async def create_session(orgCode: str, data: dict):
+    session_id = f"session-{len(sessions)}-{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
+    session = {
+        "key": session_id,
+        "label": data.get("label", f"业务咨询 {len(sessions) + 1}"),
+        "group": "今天", # Or determine group dynamically
+>>>>>>> d424348bedd4414c1178ad3c44e1fb577454ade3
     }
 
 @router.delete("/sessions/{key}")

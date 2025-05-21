@@ -43,7 +43,7 @@ export interface ContactInfo {
 export interface SurveyData {
   solved: 'yes' | 'no';
   comment?: string;
-  session_key: string;
+  chat_id: string;
   user_id?: string;
 }
 
@@ -54,15 +54,16 @@ export const sendMessage = async (message: string): Promise<ChatResponse> => {
 
 export const chatApi = {
   // 获取会话列表
-  getConversations: async () => {
-    const response = await axios.get(`${API_BASE_URL}/sessions`);
+  getConversations: async (orgCode: string) => {
+    const response = await axios.get(`${API_BASE_URL}/sessions/${orgCode}`);
     return response.data;
   },
 
   // 创建新会话
-  createConversation: async (name: string) => {
+  createConversation: async (name: string, orgCode: string) => {
     const response = await axios.post(`${API_BASE_URL}/sessions`, {
       label: name,
+      orgCode: orgCode
     });
     return response.data;
   },

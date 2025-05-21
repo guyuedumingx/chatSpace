@@ -5,10 +5,10 @@ import zhCN from 'antd/locale/zh_CN';
 import Chat from './pages/Chat';
 import Login from './pages/Login';
 import './styles/global.css';
-import { useOrgStore } from './stores/OrgStore';
+import { useOrgStore, OrgState } from './stores/OrgStore';
 
 const App: React.FC = () => {
-  const token = useOrgStore((state: any) => state.token);
+  const token = useOrgStore((state: OrgState) => state.token);
 
   return (
     <StrictMode>

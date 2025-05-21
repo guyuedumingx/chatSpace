@@ -11,6 +11,7 @@ import { createStyles } from 'antd-style';
 import React from 'react';
 import logo from '@/assets/logo.svg';
 import { chatApi } from '@/api/chat';
+import { useOrgStore, OrgState } from '@/stores/OrgStore';
 
 // 扩展BubbleDataType以确保类型兼容性
 interface ExtendedBubbleDataType extends BubbleDataType {
@@ -101,6 +102,8 @@ const ChatSider: React.FC<ChatSiderProps> = ({
 }) => {
   const { styles } = useStyle();
   const [messageApi, contextHolder] = message.useMessage();
+  const orgCode = useOrgStore((state: OrgState) => state.orgCode);
+
   const mapApiHistoryToMessageInfo = (history: ExtendedBubbleDataType[]): ChatMessageInfo[] => {
     return history.map((item, index) => ({
       id: item.id || `history-item-${index}`,
@@ -120,7 +123,8 @@ const ChatSider: React.FC<ChatSiderProps> = ({
         onClick={async () => {
           try {
             const newConversation = await chatApi.createConversation(
-              `业务咨询 ${conversations.length + 1}`
+              `业务咨询 ${conversations.length + 1}`,
+              orgCode
             ) as ConversationItem;
             setConversations([newConversation, ...conversations]);
             setCurConversation(newConversation.key);
