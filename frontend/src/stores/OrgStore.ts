@@ -21,17 +21,23 @@ export interface OrgState {
 }
 
 export const useOrgStore = create<OrgState>((set) => ({
-  orgCode: '',
-  orgName: '',
-  isFirstLogin: false,
-  token: '',
-  lastPasswordChangeTime: '',
+  orgCode: localStorage.getItem('orgCode') || '',
+  orgName: localStorage.getItem('orgName') || '',
+  isFirstLogin: localStorage.getItem('isFirstLogin') === 'true' || false,
+  token: localStorage.getItem('token') || '',
+  lastPasswordChangeTime: localStorage.getItem('lastPasswordChangeTime') || '',
   login: async (data: LoginData) => {
     const res = await orgApi.login(data);
     localStorage.setItem('token', res.token);
+    localStorage.setItem('orgCode', res.orgCode);
+    localStorage.setItem('orgName', res.orgName);
+    localStorage.setItem('isFirstLogin', res.isFirstLogin);
+    localStorage.setItem('lastPasswordChangeTime', res.lastPasswordChangeTime);
     set({ orgCode: res.orgCode, orgName: res.orgName, isFirstLogin: res.isFirstLogin, token: res.token, lastPasswordChangeTime: res.lastPasswordChangeTime });
     return res;
   },
+
+
 
   logout: () => {
     set({ orgCode: '', orgName: '', token: ''});

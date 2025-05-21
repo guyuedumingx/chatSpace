@@ -96,7 +96,7 @@ const Chat: React.FC = () => {
   const [hotTopics, setHotTopics] = useState<HotTopicItem[]>([]);
   const [messages, setMessages] = useState<MessageInfo[]>([]);
   const [surveyVisible, setSurveyVisible] = useState(false);
-  const [contactInfo, setContactInfo] = useState<ContactInfo>({ contactName: '', contactPhone: '' });
+  const [contactInfo, setContactInfo] = useState<ContactInfo[]>([]);
   const surveyTimer = useRef<NodeJS.Timeout | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
 
@@ -303,6 +303,7 @@ const Chat: React.FC = () => {
   const handleShowSurvey = async () => {
     if (!curConversation) return;
     const info = await chatApi.getContactInfo(curConversation);
+    console.log(info)
     setContactInfo(info);
     setSurveyVisible(true);
   };
@@ -346,8 +347,7 @@ const Chat: React.FC = () => {
         visible={surveyVisible}
         onClose={() => setSurveyVisible(false)}
         onSubmit={handleSurveySubmit}
-        contactName={contactInfo.contactName}
-        contactPhone={contactInfo.contactPhone}
+        contactInfo={contactInfo}
       />
     </div>
   );

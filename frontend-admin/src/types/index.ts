@@ -79,11 +79,10 @@ export interface DashboardData {
 export interface PaginationParams {
   page: number;
   pageSize: number;
+  keyword?: string;
   startDate?: string;
   endDate?: string;
-  keyword?: string;
-  orgCode?: string;
-  solved?: string;
+  branchId?: string;
 }
 
 // 分页响应类型
