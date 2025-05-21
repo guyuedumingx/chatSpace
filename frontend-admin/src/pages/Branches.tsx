@@ -57,36 +57,38 @@ const Branches: React.FC = () => {
       // 请求方法: GET
       // 返回格式: BranchOption[]
       
-      // 模拟层级结构数据
+      // 模拟层级结构数据 - 只保留一级行及下面网点
       const mockBranchOptions: BranchOption[] = [
         {
           value: '1000',
           label: '总行',
           children: [
-            {
-              value: '1001',
-              label: '北京分行',
-              children: [
-                { value: '1001001', label: '朝阳支行' },
-                { value: '1001002', label: '海淀支行' },
-              ]
-            },
-            {
-              value: '1002',
-              label: '上海分行',
-              children: [
-                { value: '1002001', label: '浦东支行' },
-                { value: '1002002', label: '黄浦支行' },
-              ]
-            },
-            {
-              value: '1003',
-              label: '广州分行',
-              children: [
-                { value: '1003001', label: '天河支行' },
-                { value: '1003002', label: '越秀支行' },
-              ]
-            }
+            { value: '1001001', label: '北京总行营业部' },
+            { value: '1001002', label: '北京金融街支行' },
+          ]
+        },
+        {
+          value: '1001',
+          label: '北京分行',
+          children: [
+            { value: '1001001', label: '朝阳支行' },
+            { value: '1001002', label: '海淀支行' },
+          ]
+        },
+        {
+          value: '1002',
+          label: '上海分行',
+          children: [
+            { value: '1002001', label: '浦东支行' },
+            { value: '1002002', label: '黄浦支行' },
+          ]
+        },
+        {
+          value: '1003',
+          label: '广州分行',
+          children: [
+            { value: '1003001', label: '天河支行' },
+            { value: '1003002', label: '越秀支行' },
           ]
         }
       ];

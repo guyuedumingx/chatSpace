@@ -242,36 +242,38 @@ const Conversations: React.FC = () => {
       // 请求方法: GET
       // 返回格式: BranchOption[]
       
-      // 模拟层级结构数据
+      // 模拟层级结构数据 - 只保留一级行及下面网点
       const mockBranchOptions: BranchOption[] = [
         {
           value: '1000',
           label: '总行',
           children: [
-            {
-              value: '1001',
-              label: '北京分行',
-              children: [
-                { value: '1001001', label: '朝阳支行' },
-                { value: '1001002', label: '海淀支行' },
-              ]
-            },
-            {
-              value: '1002',
-              label: '上海分行',
-              children: [
-                { value: '1002001', label: '浦东支行' },
-                { value: '1002002', label: '黄浦支行' },
-              ]
-            },
-            {
-              value: '1003',
-              label: '广州分行',
-              children: [
-                { value: '1003001', label: '天河支行' },
-                { value: '1003002', label: '越秀支行' },
-              ]
-            }
+            { value: '1001001', label: '北京总行营业部' },
+            { value: '1001002', label: '北京金融街支行' },
+          ]
+        },
+        {
+          value: '1001',
+          label: '北京分行',
+          children: [
+            { value: '1001001', label: '朝阳支行' },
+            { value: '1001002', label: '海淀支行' },
+          ]
+        },
+        {
+          value: '1002',
+          label: '上海分行',
+          children: [
+            { value: '1002001', label: '浦东支行' },
+            { value: '1002002', label: '黄浦支行' },
+          ]
+        },
+        {
+          value: '1003',
+          label: '广州分行',
+          children: [
+            { value: '1003001', label: '天河支行' },
+            { value: '1003002', label: '越秀支行' },
           ]
         }
       ];
@@ -328,39 +330,6 @@ const Conversations: React.FC = () => {
       sorter: (a: ConversationData, b: ConversationData) => a.messages - b.messages,
     },
     {
-      title: '时长',
-      dataIndex: 'duration',
-      key: 'duration',
-      width: 120,
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
-      width: 100,
-      render: (status: string) => {
-        let color = 'default';
-        let text = '未知';
-        
-        switch (status) {
-          case 'active':
-            color = 'processing';
-            text = '进行中';
-            break;
-          case 'ended':
-            color = 'success';
-            text = '已结束';
-            break;
-          case 'timeout':
-            color = 'warning';
-            text = '超时';
-            break;
-        }
-        
-        return <Tag color={color}>{text}</Tag>;
-      },
-    },
-    {
       title: (
         <span>
           满意度 
@@ -372,8 +341,19 @@ const Conversations: React.FC = () => {
       dataIndex: 'satisfaction',
       key: 'satisfaction',
       width: 100,
-      render: (satisfaction?: ConversationData['satisfaction']) => {
-        if (!satisfaction) return <Tag color="default">未评价</Tag>;
+      render: (satisfaction: ConversationData['satisfaction'] | undefined, record: ConversationData) => {
+        if (!satisfaction) {
+          return (
+            <Badge 
+              status="success" 
+              text={
+                <a onClick={() => showUnevaluatedDetail(record)}>
+                  已解决
+                </a>
+              } 
+            />
+          );
+        }
         
         return (
           <Badge 
@@ -389,11 +369,10 @@ const Conversations: React.FC = () => {
       filters: [
         { text: '已解决', value: 'yes' },
         { text: '未解决', value: 'no' },
-        { text: '未评价', value: 'none' },
       ],
       onFilter: (value: boolean | Key, record: ConversationData) => {
-        if (value === 'none') return !record.satisfaction;
-        return record.satisfaction?.solved === value;
+        if (!record.satisfaction) return value === 'yes';
+        return record.satisfaction.solved === value;
       },
     },
     {
@@ -403,8 +382,10 @@ const Conversations: React.FC = () => {
       render: (_: unknown, record: ConversationData) => (
         <Space size="middle">
           <a onClick={() => showConversationDetail(record.id)}>查看对话</a>
-          {record.satisfaction && (
+          {record.satisfaction ? (
             <a onClick={() => showSurveyDetail(record.satisfaction)}>满意度详情</a>
+          ) : (
+            <a onClick={() => showUnevaluatedDetail(record)}>满意度详情</a>
           )}
           <a href={`/conversations/${record.id}/export`}>导出</a>
         </Space>
@@ -433,11 +414,9 @@ const Conversations: React.FC = () => {
     
     if (solvedFilter) {
       if (solvedFilter === 'yes') {
-        filtered = filtered.filter(conv => conv.satisfaction?.solved === 'yes');
+        filtered = filtered.filter(conv => !conv.satisfaction || conv.satisfaction.solved === 'yes');
       } else if (solvedFilter === 'no') {
         filtered = filtered.filter(conv => conv.satisfaction?.solved === 'no');
-      } else if (solvedFilter === 'none') {
-        filtered = filtered.filter(conv => !conv.satisfaction);
       }
     }
     
@@ -482,6 +461,20 @@ const Conversations: React.FC = () => {
     setIsSurveyModalVisible(true);
   };
 
+  // 添加未评价详情展示函数
+  const showUnevaluatedDetail = (conversation: ConversationData) => {
+    // 创建一个模拟的满意度对象，标记为已解决
+    const mockSatisfaction: ConversationData['satisfaction'] = {
+      solved: 'yes',
+      timestamp: conversation.time, // 使用会话时间作为评价时间
+    };
+    
+    // 设置当前会话和模拟的满意度
+    setCurrentConversationId(conversation.id);
+    setCurrentSurvey(mockSatisfaction);
+    setIsSurveyModalVisible(true);
+  };
+
   // 找到当前会话
   const currentConversation = currentConversationId 
     ? mockConversationData.find(c => c.id === currentConversationId) 
@@ -523,8 +516,7 @@ const Conversations: React.FC = () => {
             onChange={value => setSolvedFilter(value)}
             options={[
               { value: 'yes', label: '已解决' },
-              { value: 'no', label: '未解决' },
-              { value: 'none', label: '未评价' }
+              { value: 'no', label: '未解决' }
             ]}
           />
           
@@ -690,7 +682,7 @@ const Conversations: React.FC = () => {
             <div style={{ marginBottom: 16 }}>
               <Progress 
                 type="circle" 
-                percent={currentSurvey.solved === 'yes' ? 100 : 0} 
+                percent={100} // 一律显示100%
                 format={() => currentSurvey.solved === 'yes' ? '已解决' : '未解决'}
                 status={currentSurvey.solved === 'yes' ? 'success' : 'exception'}
                 width={80}
@@ -698,7 +690,11 @@ const Conversations: React.FC = () => {
               <div style={{ marginTop: 16 }}>
                 <span style={{ fontWeight: 'bold' }}>问题解决情况：</span>
                 <span>
-                  {currentSurvey.solved === 'yes' ? '用户表示问题已解决' : '用户表示问题未解决'}
+                  {!currentConversation?.satisfaction ? 
+                    '用户未做评价，默认已解决' : 
+                    (currentSurvey.solved === 'yes' ? 
+                      '用户表示问题已解决' : 
+                      '用户表示问题未解决')}
                 </span>
               </div>
             </div>
