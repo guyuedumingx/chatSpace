@@ -2,9 +2,9 @@ from fastapi import HTTPException, Depends, APIRouter
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from database.config import get_db
-from database.crud import org
+from database.crud import org, session as session_crud, chat
 from security import create_access_token, get_password_hash, verify_password
-
+from database.schema import SessionCreate, ChatCreate
 
 # 创建路由器
 router = APIRouter()
@@ -25,6 +25,21 @@ async def login(data: dict, db: Session = Depends(get_db)):
     # 如果是第一次登录，更新状态
     if isFirstLogin:
         db_org.isFirstLogin = False
+
+        # 检查组织是否已有会话
+        db_session = session_crud.getByOrg(db, orgCode)
+        
+        # 如果没有会话，创建新会话
+        if not db_session:
+            session_data = SessionCreate(orgCode=orgCode)
+            db_session = session_crud.create(db, objIn=session_data)
+        
+        # 创建新的聊天
+        chat_data = ChatCreate(
+            sessionId=db_session.sessionId,
+            chatName="业务咨询",
+        )
+        db_chat = chat.create(db, objIn=chat_data)
         db.add(db_org)
         db.commit()
         db.refresh(db_org)
@@ -36,31 +51,6 @@ async def login(data: dict, db: Session = Depends(get_db)):
         "isFirstLogin": isFirstLogin,  # 返回登录前的状态，以便前端判断是否需要修改密码
         "lastPasswordChangeTime": db_org.passwordLastChanged.isoformat()
     }
-
-@router.post("/api/register")
-async def register(data: dict, db: Session = Depends(get_db)):
-    orgCode = data.get("orgCode")
-    password = data.get("password")
-    
-    # 检查是否已存在
-    db_org = org.getByOrgCode(db, orgCode)
-    if db_org:
-        raise HTTPException(status_code=400, detail="机构号已存在")
-    
-    # 创建新机构
-    new_org = org.create(db, orgCode, get_password_hash(password))
-    db.add(new_org)
-    db.commit()
-    db.refresh(new_org)
-    return {
-        "token": create_access_token(data={"sub": db_org.orgCode}),
-        "orgCode": db_org.orgCode,
-        "orgName": db_org.orgName,
-        "isFirstLogin": True,  # 返回登录前的状态，以便前端判断是否需要修改密码
-        "lastPasswordChangeTime": db_org.passwordLastChanged.isoformat()
-    }
-    
-
 
 @router.post("/api/changePassword")
 async def change_password(data: dict, db: Session = Depends(get_db)):

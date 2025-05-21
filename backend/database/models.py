@@ -41,13 +41,11 @@ class Chat(Base):
     chatId = Column(String, unique=True, index=True, default=lambda: str(uuid.uuid4()))
     sessionId = Column(String, ForeignKey("sessions.sessionId"))
     chatName = Column(String, nullable=False)
-    title = Column(String, nullable=True)
     createdAt = Column(DateTime, default=datetime.now)
     isDeleted = Column(Boolean, default=False)
     # 关系：一个对话属于一个会话，一个对话有多条消息
     session = relationship("Session", back_populates="chats")
     messages = relationship("Message", back_populates="chat", cascade="all, delete-orphan")
-
 
 class Message(Base):
     __tablename__ = "messages"
@@ -88,3 +86,14 @@ class Topic(Base):
     
     def __delitem__(self, key):
         delattr(self, key)
+
+class Survey(Base):
+    __tablename__ = "surveys"
+
+    id = Column(Integer, primary_key=True, index=True)
+    surveyId = Column(String, unique=True, index=True, default=lambda: str(uuid.uuid4()))
+    surveyName = Column(String, nullable=False)
+    createdAt = Column(DateTime, default=datetime.now)
+    solved = Column(String, nullable=False)
+    comment = Column(String, nullable=True)
+    chatId = Column(String, ForeignKey("chats.chatId"))

@@ -55,6 +55,9 @@ async def save_message_history(key: str, message_data: dict, db: Session = Depen
     
     # 创建用户消息
     user_content = mask_sensitive(message_data.get("content", ""))
+
+    if db_chat.chatName.startswith("业务咨询"):
+        db_chat.chatName = user_content[:10] if len(user_content) > 10 else user_content
     now = datetime.now()
     
     # 保存用户消息到数据库
@@ -151,7 +154,7 @@ async def get_chats(orgCode: str, db: Session = Depends(get_db)):
             
         session_item = {
             "key": db_chat.chatId,
-            "label": db_chat.title or db_chat.chatName,
+            "label": db_chat.chatName,
             "group": group
         }
         sessions_list.append(session_item)
@@ -183,14 +186,13 @@ async def create_chat(data: dict, db: Session = Depends(get_db)):
     chat_data = schema.ChatCreate(
         sessionId=db_session.sessionId,
         chatName=chatName,
-        title=data.get("title")
     )
     db_chat = chat.create(db, objIn=chat_data)
     
     # 返回新创建的聊天信息
     return {
         "key": db_chat.chatId,
-        "label": db_chat.title or db_chat.chatName,
+        "label": db_chat.chatName,
         "group": "今天"
     }
 

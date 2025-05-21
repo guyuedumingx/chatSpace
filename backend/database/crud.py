@@ -2,11 +2,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any, Type, TypeVar, Generic
 from pydantic import BaseModel
 from datetime import datetime
-from .models import Org, Session as SessionModel, Chat as ChatModel, Message as MessageModel, Topic as TopicModel
-from beans.org import Org as OrgBean
-from beans.session import Session as SessionBean
-from beans.chat import Chat as ChatBean
-from beans.message import Message as MessageBean
+from .models import Org, Session as SessionModel, Chat as ChatModel, Message as MessageModel, Topic as TopicModel, Survey as SurveyModel
 
 # 定义泛型类型变量
 T = TypeVar('T')
@@ -92,15 +88,6 @@ class CRUDOrg(CRUDBase[Org, CreateSchemaType]):
             db.refresh(org)
         return org
     
-    def toBean(self, dbOrg: Org) -> OrgBean:
-        """将数据库组织对象转换为Bean对象"""
-        return OrgBean(
-            orgCode=dbOrg.orgCode,
-            org_name=dbOrg.orgName,
-            password=dbOrg.password,
-            password_last_changed=dbOrg.passwordLastChanged
-        )
-
 
 # 创建具体的CRUD类实例
 class CRUDSession(CRUDBase[SessionModel, CreateSchemaType]):
@@ -114,17 +101,6 @@ class CRUDSession(CRUDBase[SessionModel, CreateSchemaType]):
         """获取组织的会话（一个组织只有一个会话）"""
         return db.query(self.model).filter(self.model.orgCode == orgCode).filter(self.model.isDeleted == False).first()
     
-    def toBean(self, dbSession: SessionModel, includeChats: bool = False) -> SessionBean:
-        """将数据库会话对象转换为Bean对象"""
-        sessionBean = SessionBean(created_at=dbSession.createdAt)
-        
-        if includeChats and dbSession.chats:
-            for dbChat in dbSession.chats:
-                chatBean = chat.toBean(dbChat, includeMessages=False)
-                sessionBean.add_chat(chatBean)
-                
-        return sessionBean
-
 
 class CRUDChat(CRUDBase[ChatModel, CreateSchemaType]):
     """对话CRUD操作"""
@@ -137,22 +113,6 @@ class CRUDChat(CRUDBase[ChatModel, CreateSchemaType]):
         """获取会话的所有对话"""
         return db.query(self.model).filter(self.model.sessionId == sessionId).filter(self.model.isDeleted == False).order_by(self.model.createdAt.desc()).limit(20).all()
     
-    def toBean(self, dbChat: ChatModel, includeMessages: bool = False) -> ChatBean:
-        """将数据库对话对象转换为Bean对象"""
-        chatBean = ChatBean(
-            chat_name=dbChat.chatName,
-            title=dbChat.title,
-            created_at=dbChat.createdAt
-        )
-        
-        # 如果指定了包含消息，则同时加载消息
-        if includeMessages and dbChat.messages:
-            for dbMessage in dbChat.messages:
-                messageBean = message.toBean(dbMessage)
-                chatBean.add_message(messageBean)
-                
-        return chatBean
-
 
 class CRUDMessage(CRUDBase[MessageModel, CreateSchemaType]):
     """消息CRUD操作"""
@@ -165,16 +125,6 @@ class CRUDMessage(CRUDBase[MessageModel, CreateSchemaType]):
         """获取对话的所有消息"""
         return db.query(self.model).filter(self.model.chatId == chatId).all()
     
-    def toBean(self, dbMessage: MessageModel) -> MessageBean:
-        """将数据库消息对象转换为Bean对象"""
-        return MessageBean(
-            content=dbMessage.content,
-            sender=dbMessage.sender,
-            message_id=dbMessage.messageId,
-            status=dbMessage.status,
-            timestamp=dbMessage.timestamp
-        )
-
 
 class CRUDTopic(CRUDBase[TopicModel, CreateSchemaType]):
     """话题CRUD操作"""
@@ -192,9 +142,21 @@ class CRUDTopic(CRUDBase[TopicModel, CreateSchemaType]):
         return db.query(self.model).order_by(self.model.order).all()
 
 
+class CRUDSurvey(CRUDBase[SurveyModel, CreateSchemaType]):
+    """调查CRUD操作"""
+    
+    def getBySurveyId(self, db: Session, surveyId: str) -> Optional[SurveyModel]:
+        """通过surveyId获取调查"""
+        return db.query(self.model).filter(self.model.surveyId == surveyId).first()
+    
+    def getByChatId(self, db: Session, chatId: str) -> List[SurveyModel]:
+        """获取对话的最新调查"""
+        return db.query(self.model).filter(self.model.chatId == chatId).order_by(self.model.createdAt.desc()).limit(1).all()
+
 # 创建CRUD实例
 org = CRUDOrg(Org)
 session = CRUDSession(SessionModel)
 chat = CRUDChat(ChatModel)
 message = CRUDMessage(MessageModel)
-topic = CRUDTopic(TopicModel) 
+topic = CRUDTopic(TopicModel)
+survey = CRUDSurvey(SurveyModel)
