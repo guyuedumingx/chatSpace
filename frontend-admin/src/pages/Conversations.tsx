@@ -3,6 +3,7 @@ import { Card, Table, DatePicker, Button, Space, Tag, Select, Input, Modal, Row,
 import { SearchOutlined, CommentOutlined, ClockCircleOutlined, InfoCircleOutlined, ShopOutlined, FileTextOutlined } from '@ant-design/icons';
 import type { RangePickerProps } from 'antd/es/date-picker';
 import type { Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
 import type { Key } from 'react';
@@ -30,6 +31,13 @@ interface MessageData {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+}
+
+// 网点层级结构接口
+interface BranchOption {
+  value: string;
+  label: string;
+  children?: BranchOption[];
 }
 
 // 模拟对话数据
@@ -189,13 +197,6 @@ const mockMessageData: { [key: string]: MessageData[] } = {
   ],
 };
 
-// 网点层级结构接口
-interface BranchOption {
-  value: string;
-  label: string;
-  children?: BranchOption[];
-}
-
 const Conversations: React.FC = () => {
   const [conversations, setConversations] = useState<ConversationData[]>(mockConversationData);
   const [dateRange, setDateRange] = useState<[string, string] | null>(null);
@@ -205,7 +206,7 @@ const Conversations: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isSurveyModalVisible, setIsSurveyModalVisible] = useState(false);
-  const [currentConversation, setCurrentConversation] = useState<string | null>(null);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [currentMessages, setCurrentMessages] = useState<MessageData[]>([]);
   const [currentSurvey, setCurrentSurvey] = useState<ConversationData['satisfaction'] | null>(null);
   const [branchOptions, setBranchOptions] = useState<BranchOption[]>([]);
@@ -463,7 +464,7 @@ const Conversations: React.FC = () => {
 
   // 显示对话详情
   const showConversationDetail = (conversationId: string) => {
-    setCurrentConversation(conversationId);
+    setCurrentConversationId(conversationId);
     // 这里应该从API获取对话消息数据
     // 暂时使用模拟数据
     setCurrentMessages(mockMessageData[conversationId] || []);
@@ -480,6 +481,11 @@ const Conversations: React.FC = () => {
     setCurrentSurvey(conversation?.satisfaction || null);
     setIsSurveyModalVisible(true);
   };
+
+  // 找到当前会话
+  const currentConversation = currentConversationId 
+    ? mockConversationData.find(c => c.id === currentConversationId) 
+    : null;
 
   return (
     <div>
@@ -587,17 +593,17 @@ const Conversations: React.FC = () => {
             <Row gutter={[16, 16]}>
               <Col span={8}>
                 <span style={{ fontWeight: 'bold' }}><ClockCircleOutlined /> 时间：</span>
-                {currentConversation}
+                {currentConversation.time}
               </Col>
               <Col span={8}>
                 <span style={{ fontWeight: 'bold' }}><ShopOutlined /> 分支机构：</span>
-                <a onClick={() => navigate(`/branches?id=${branchFilter}`)}>
-                  {branchFilter}
+                <a onClick={() => navigate(`/branches?id=${currentConversation.branchId}`)}>
+                  {currentConversation.branch}
                 </a>
               </Col>
               <Col span={8}>
                 <span style={{ fontWeight: 'bold' }}><CommentOutlined /> 主题：</span>
-                {currentConversation}
+                {currentConversation.topic}
               </Col>
             </Row>
             
@@ -631,22 +637,22 @@ const Conversations: React.FC = () => {
               ))}
             </div>
             
-            {currentSurvey && (
+            {currentConversation.satisfaction && (
               <div style={{ marginTop: 16, padding: '10px', background: '#f9f9f9', borderRadius: 4 }}>
                 <div>
                   <span style={{ fontWeight: 'bold' }}><FileTextOutlined /> 满意度反馈：</span>
-                  <Tag color={currentSurvey.solved === 'yes' ? 'success' : 'error'}>
-                    {currentSurvey.solved === 'yes' ? '已解决问题' : '未解决问题'}
+                  <Tag color={currentConversation.satisfaction.solved === 'yes' ? 'success' : 'error'}>
+                    {currentConversation.satisfaction.solved === 'yes' ? '已解决问题' : '未解决问题'}
                   </Tag>
                   <span style={{ fontSize: 12, color: '#999', marginLeft: 8 }}>
-                    {currentSurvey.timestamp}
+                    {currentConversation.satisfaction.timestamp}
                   </span>
                 </div>
                 
-                {currentSurvey.comment && (
+                {currentConversation.satisfaction.comment && (
                   <div style={{ marginTop: 8 }}>
                     <span style={{ fontWeight: 'bold' }}>用户意见：</span>
-                    <div style={{ marginTop: 4 }}>{currentSurvey.comment}</div>
+                    <div style={{ marginTop: 4 }}>{currentConversation.satisfaction.comment}</div>
                   </div>
                 )}
               </div>
@@ -671,7 +677,7 @@ const Conversations: React.FC = () => {
             <Row gutter={[16, 16]}>
               <Col span={12}>
                 <span style={{ fontWeight: 'bold' }}><ShopOutlined /> 分支机构：</span>
-                {branchFilter}
+                {currentConversation?.branch || ''}
               </Col>
               <Col span={12}>
                 <span style={{ fontWeight: 'bold' }}><ClockCircleOutlined /> 提交时间：</span>
@@ -715,12 +721,19 @@ const Conversations: React.FC = () => {
             <Divider />
             
             <div>
-              <Button type="primary" onClick={() => showConversationDetail(currentConversation)}>
-                查看相关对话
-              </Button>
-              <Button style={{ marginLeft: 8 }} onClick={() => navigate(`/branches?id=${branchFilter}`)}>
-                查看分支机构
-              </Button>
+              {currentConversationId && (
+                <Button type="primary" onClick={() => showConversationDetail(currentConversationId)}>
+                  查看相关对话
+                </Button>
+              )}
+              {currentConversation && (
+                <Button 
+                  style={{ marginLeft: 8 }} 
+                  onClick={() => navigate(`/branches?id=${currentConversation.branchId}`)}
+                >
+                  查看分支机构
+                </Button>
+              )}
             </div>
           </div>
         )}

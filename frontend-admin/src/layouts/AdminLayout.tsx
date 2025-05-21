@@ -76,8 +76,11 @@ const AdminLayout: React.FC = () => {
   // 处理用户菜单点击
   const handleUserMenuClick = ({ key }: { key: string }) => {
     if (key === 'logout') {
-      // TODO: 实现登出逻辑
-      navigate('/login');
+      // 清除登录状态
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      // 重定向到登录页面
+      navigate('/login', { replace: true });
     } else if (key === 'profile') {
       // TODO: 跳转到个人信息页面
     }
