@@ -12,6 +12,7 @@ import Branches from './pages/Branches';
 import Conversations from './pages/Conversations';
 import Surveys from './pages/Surveys';
 import Login from './pages/Login';
+import QuestionBank from './pages/QuestionBank';
 
 // 认证检查组件
 const AuthRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => {
@@ -69,6 +70,7 @@ const App: React.FC = () => {
             <Route path="branches" element={<Branches />} />
             <Route path="conversations" element={<Conversations />} />
             <Route path="surveys" element={<Surveys />} />
+            <Route path="question-bank" element={<QuestionBank />} />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Table, DatePicker, Button, Space, Tag, Select, Input, Modal, Row, Col, Divider, Badge, Tooltip, Progress } from 'antd';
+import { Card, Table, DatePicker, Button, Space, Tag, Select, Input, Modal, Row, Col, Divider, Badge, Tooltip, Progress, Cascader } from 'antd';
 import { SearchOutlined, CommentOutlined, ClockCircleOutlined, InfoCircleOutlined, ShopOutlined, FileTextOutlined } from '@ant-design/icons';
 import type { RangePickerProps } from 'antd/es/date-picker';
 import type { Dayjs } from 'dayjs';
@@ -189,6 +189,13 @@ const mockMessageData: { [key: string]: MessageData[] } = {
   ],
 };
 
+// 网点层级结构接口
+interface BranchOption {
+  value: string;
+  label: string;
+  children?: BranchOption[];
+}
+
 const Conversations: React.FC = () => {
   const [conversations, setConversations] = useState<ConversationData[]>(mockConversationData);
   const [dateRange, setDateRange] = useState<[string, string] | null>(null);
@@ -198,8 +205,11 @@ const Conversations: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isSurveyModalVisible, setIsSurveyModalVisible] = useState(false);
-  const [selectedConversation, setSelectedConversation] = useState<ConversationData | null>(null);
-  const [messageData, setMessageData] = useState<MessageData[]>([]);
+  const [currentConversation, setCurrentConversation] = useState<string | null>(null);
+  const [currentMessages, setCurrentMessages] = useState<MessageData[]>([]);
+  const [currentSurvey, setCurrentSurvey] = useState<ConversationData['satisfaction'] | null>(null);
+  const [branchOptions, setBranchOptions] = useState<BranchOption[]>([]);
+  const [selectedBranch, setSelectedBranch] = useState<string[]>([]);
   
   const location = useLocation();
   const navigate = useNavigate();
@@ -218,6 +228,68 @@ const Conversations: React.FC = () => {
       setConversations(mockConversationData);
     }
   }, [location]);
+
+  // 获取网点层级结构数据
+  useEffect(() => {
+    fetchBranchOptions();
+  }, []);
+
+  const fetchBranchOptions = async () => {
+    try {
+      // TODO: 后端接口对接
+      // 接口路径: /api/v1/admin/branches/hierarchy
+      // 请求方法: GET
+      // 返回格式: BranchOption[]
+      
+      // 模拟层级结构数据
+      const mockBranchOptions: BranchOption[] = [
+        {
+          value: '1000',
+          label: '总行',
+          children: [
+            {
+              value: '1001',
+              label: '北京分行',
+              children: [
+                { value: '1001001', label: '朝阳支行' },
+                { value: '1001002', label: '海淀支行' },
+              ]
+            },
+            {
+              value: '1002',
+              label: '上海分行',
+              children: [
+                { value: '1002001', label: '浦东支行' },
+                { value: '1002002', label: '黄浦支行' },
+              ]
+            },
+            {
+              value: '1003',
+              label: '广州分行',
+              children: [
+                { value: '1003001', label: '天河支行' },
+                { value: '1003002', label: '越秀支行' },
+              ]
+            }
+          ]
+        }
+      ];
+      
+      setBranchOptions(mockBranchOptions);
+    } catch (err) {
+      console.error('获取网点层级结构失败:', err);
+    }
+  };
+
+  // 处理网点层级选择
+  const handleBranchChange = (value: string[]) => {
+    setSelectedBranch(value);
+    if (value && value.length > 0) {
+      setBranchFilter(value[value.length - 1]);
+    } else {
+      setBranchFilter(null);
+    }
+  };
 
   // 日期范围选择器配置
   const disabledDate: RangePickerProps['disabledDate'] = (current: Dayjs | null) => {
@@ -341,65 +413,60 @@ const Conversations: React.FC = () => {
 
   // 处理筛选
   const handleFilter = () => {
-    let filteredData = [...mockConversationData];
+    let filtered = [...mockConversationData];
     
-    // 应用分支机构筛选
-    if (branchFilter) {
-      filteredData = filteredData.filter(item => item.branchId === branchFilter);
-    }
-    
-    // 应用状态筛选
-    if (statusFilter) {
-      filteredData = filteredData.filter(item => item.status === statusFilter);
-    }
-    
-    // 应用满意度筛选
-    if (solvedFilter) {
-      if (solvedFilter === 'none') {
-        filteredData = filteredData.filter(item => !item.satisfaction);
-      } else {
-        filteredData = filteredData.filter(
-          item => item.satisfaction?.solved === solvedFilter
-        );
-      }
-    }
-    
-    // 应用搜索关键词
     if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filteredData = filteredData.filter(
-        item => item.topic.toLowerCase().includes(term) || item.id.toLowerCase().includes(term)
+      filtered = filtered.filter(conv => 
+        conv.topic.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        conv.id.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     
-    // 应用日期筛选（实际应用中应该从后端获取筛选后的数据）
-    if (dateRange) {
-      const [startDate, endDate] = dateRange;
-      console.log('筛选日期范围:', startDate, '至', endDate);
+    if (branchFilter) {
+      filtered = filtered.filter(conv => conv.branchId === branchFilter);
     }
     
-    setConversations(filteredData);
+    if (statusFilter) {
+      filtered = filtered.filter(conv => conv.status === statusFilter);
+    }
+    
+    if (solvedFilter) {
+      if (solvedFilter === 'yes') {
+        filtered = filtered.filter(conv => conv.satisfaction?.solved === 'yes');
+      } else if (solvedFilter === 'no') {
+        filtered = filtered.filter(conv => conv.satisfaction?.solved === 'no');
+      } else if (solvedFilter === 'none') {
+        filtered = filtered.filter(conv => !conv.satisfaction);
+      }
+    }
+    
+    if (dateRange) {
+      const [start, end] = dateRange;
+      filtered = filtered.filter(conv => {
+        const convDate = new Date(conv.time);
+        return convDate >= new Date(start) && convDate <= new Date(end);
+      });
+    }
+    
+    setConversations(filtered);
   };
 
-  // 重置筛选
   const handleReset = () => {
+    setSearchTerm('');
     setBranchFilter(null);
+    setSelectedBranch([]);
     setStatusFilter(null);
     setSolvedFilter(null);
     setDateRange(null);
-    setSearchTerm('');
     setConversations(mockConversationData);
-    
-    // 清除URL参数
-    navigate('/conversations');
   };
 
   // 显示对话详情
   const showConversationDetail = (conversationId: string) => {
-    setSelectedConversation(mockConversationData.find(c => c.id === conversationId) || null);
+    setCurrentConversation(conversationId);
     // 这里应该从API获取对话消息数据
     // 暂时使用模拟数据
-    setMessageData(mockMessageData[conversationId] || []);
+    setCurrentMessages(mockMessageData[conversationId] || []);
     setIsModalVisible(true);
   };
   
@@ -410,7 +477,7 @@ const Conversations: React.FC = () => {
     const conversation = mockConversationData.find(
       c => c.satisfaction?.timestamp === satisfaction.timestamp
     );
-    setSelectedConversation(conversation || null);
+    setCurrentSurvey(conversation?.satisfaction || null);
     setIsSurveyModalVisible(true);
   };
 
@@ -420,52 +487,61 @@ const Conversations: React.FC = () => {
       
       <Card bordered={false}>
         <Space style={{ marginBottom: 16 }} wrap>
-          <Input
-            placeholder="搜索主题/会话ID"
+          <Cascader
+            options={branchOptions}
+            placeholder="选择网点层级"
+            style={{ width: 300 }}
+            value={selectedBranch}
+            onChange={handleBranchChange as any}
+            changeOnSelect
+          />
+          
+          <Select
+            placeholder="对话状态"
+            style={{ width: 120 }}
+            allowClear
+            value={statusFilter || undefined}
+            onChange={value => setStatusFilter(value)}
+            options={[
+              { value: 'active', label: '进行中' },
+              { value: 'ended', label: '已结束' },
+              { value: 'timeout', label: '超时结束' }
+            ]}
+          />
+          
+          <Select
+            placeholder="问题解决"
+            style={{ width: 120 }}
+            allowClear
+            value={solvedFilter || undefined}
+            onChange={value => setSolvedFilter(value)}
+            options={[
+              { value: 'yes', label: '已解决' },
+              { value: 'no', label: '未解决' },
+              { value: 'none', label: '未评价' }
+            ]}
+          />
+          
+          <RangePicker 
+            format="YYYY-MM-DD"
+            value={dateRange ? [dayjs(dateRange[0]), dayjs(dateRange[1])] : null}
+            onChange={(dates) => {
+              if (dates) {
+                setDateRange([dates[0]!.format('YYYY-MM-DD'), dates[1]!.format('YYYY-MM-DD')]);
+              } else {
+                setDateRange(null);
+              }
+            }}
+          />
+          
+          <Input 
+            placeholder="搜索对话主题/ID" 
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             style={{ width: 200 }}
             prefix={<SearchOutlined />}
           />
-          <Select
-            placeholder="分支机构"
-            style={{ width: 150 }}
-            allowClear
-            onChange={value => setBranchFilter(value)}
-            options={Array.from(new Set(mockConversationData.map(item => item.branchId))).map(branchId => {
-              const branch = mockConversationData.find(item => item.branchId === branchId);
-              return { value: branchId, label: branch?.branch || branchId };
-            })}
-            value={branchFilter}
-          />
-          <Select
-            placeholder="状态"
-            style={{ width: 120 }}
-            allowClear
-            onChange={value => setStatusFilter(value)}
-            options={[
-              { value: 'active', label: '进行中' },
-              { value: 'ended', label: '已结束' },
-              { value: 'timeout', label: '超时' },
-            ]}
-            value={statusFilter}
-          />
-          <Select
-            placeholder="满意度"
-            style={{ width: 120 }}
-            allowClear
-            onChange={value => setSolvedFilter(value)}
-            options={[
-              { value: 'yes', label: '已解决' },
-              { value: 'no', label: '未解决' },
-              { value: 'none', label: '未评价' },
-            ]}
-            value={solvedFilter}
-          />
-          <RangePicker 
-            disabledDate={disabledDate} 
-            onChange={(_, dateStrings) => setDateRange(dateStrings as [string, string])} 
-          />
+          
           <Button type="primary" onClick={handleFilter}>查询</Button>
           <Button onClick={handleReset}>重置</Button>
         </Space>
@@ -484,12 +560,12 @@ const Conversations: React.FC = () => {
         title={
           <div>
             <span>对话详情</span>
-            {selectedConversation?.satisfaction && (
+            {currentSurvey && (
               <Tag 
-                color={selectedConversation.satisfaction.solved === 'yes' ? 'success' : 'error'}
+                color={currentSurvey.solved === 'yes' ? 'success' : 'error'}
                 style={{ marginLeft: 8 }}
               >
-                {selectedConversation.satisfaction.solved === 'yes' ? '已解决' : '未解决'}
+                {currentSurvey.solved === 'yes' ? '已解决' : '未解决'}
               </Tag>
             )}
           </div>
@@ -506,29 +582,29 @@ const Conversations: React.FC = () => {
         ]}
         width={800}
       >
-        {selectedConversation && (
+        {currentConversation && (
           <div>
             <Row gutter={[16, 16]}>
               <Col span={8}>
                 <span style={{ fontWeight: 'bold' }}><ClockCircleOutlined /> 时间：</span>
-                {selectedConversation.time}
+                {currentConversation}
               </Col>
               <Col span={8}>
                 <span style={{ fontWeight: 'bold' }}><ShopOutlined /> 分支机构：</span>
-                <a onClick={() => navigate(`/branches?id=${selectedConversation.branchId}`)}>
-                  {selectedConversation.branch}
+                <a onClick={() => navigate(`/branches?id=${branchFilter}`)}>
+                  {branchFilter}
                 </a>
               </Col>
               <Col span={8}>
                 <span style={{ fontWeight: 'bold' }}><CommentOutlined /> 主题：</span>
-                {selectedConversation.topic}
+                {currentConversation}
               </Col>
             </Row>
             
             <Divider />
             
             <div style={{ maxHeight: '400px', overflowY: 'auto', padding: '10px' }}>
-              {messageData.map(message => (
+              {currentMessages.map(message => (
                 <div 
                   key={message.id} 
                   style={{ 
@@ -555,22 +631,22 @@ const Conversations: React.FC = () => {
               ))}
             </div>
             
-            {selectedConversation.satisfaction && (
+            {currentSurvey && (
               <div style={{ marginTop: 16, padding: '10px', background: '#f9f9f9', borderRadius: 4 }}>
                 <div>
                   <span style={{ fontWeight: 'bold' }}><FileTextOutlined /> 满意度反馈：</span>
-                  <Tag color={selectedConversation.satisfaction.solved === 'yes' ? 'success' : 'error'}>
-                    {selectedConversation.satisfaction.solved === 'yes' ? '已解决问题' : '未解决问题'}
+                  <Tag color={currentSurvey.solved === 'yes' ? 'success' : 'error'}>
+                    {currentSurvey.solved === 'yes' ? '已解决问题' : '未解决问题'}
                   </Tag>
                   <span style={{ fontSize: 12, color: '#999', marginLeft: 8 }}>
-                    {selectedConversation.satisfaction.timestamp}
+                    {currentSurvey.timestamp}
                   </span>
                 </div>
                 
-                {selectedConversation.satisfaction.comment && (
+                {currentSurvey.comment && (
                   <div style={{ marginTop: 8 }}>
                     <span style={{ fontWeight: 'bold' }}>用户意见：</span>
-                    <div style={{ marginTop: 4 }}>{selectedConversation.satisfaction.comment}</div>
+                    <div style={{ marginTop: 4 }}>{currentSurvey.comment}</div>
                   </div>
                 )}
               </div>
@@ -590,16 +666,16 @@ const Conversations: React.FC = () => {
           </Button>,
         ]}
       >
-        {selectedConversation?.satisfaction && (
+        {currentSurvey && (
           <div>
             <Row gutter={[16, 16]}>
               <Col span={12}>
                 <span style={{ fontWeight: 'bold' }}><ShopOutlined /> 分支机构：</span>
-                {selectedConversation.branch}
+                {branchFilter}
               </Col>
               <Col span={12}>
                 <span style={{ fontWeight: 'bold' }}><ClockCircleOutlined /> 提交时间：</span>
-                {selectedConversation.satisfaction.timestamp}
+                {currentSurvey.timestamp}
               </Col>
             </Row>
             
@@ -608,20 +684,20 @@ const Conversations: React.FC = () => {
             <div style={{ marginBottom: 16 }}>
               <Progress 
                 type="circle" 
-                percent={selectedConversation.satisfaction?.solved === 'yes' ? 100 : 0} 
-                format={() => selectedConversation.satisfaction?.solved === 'yes' ? '已解决' : '未解决'}
-                status={selectedConversation.satisfaction?.solved === 'yes' ? 'success' : 'exception'}
+                percent={currentSurvey.solved === 'yes' ? 100 : 0} 
+                format={() => currentSurvey.solved === 'yes' ? '已解决' : '未解决'}
+                status={currentSurvey.solved === 'yes' ? 'success' : 'exception'}
                 width={80}
               />
               <div style={{ marginTop: 16 }}>
                 <span style={{ fontWeight: 'bold' }}>问题解决情况：</span>
                 <span>
-                  {selectedConversation.satisfaction?.solved === 'yes' ? '用户表示问题已解决' : '用户表示问题未解决'}
+                  {currentSurvey.solved === 'yes' ? '用户表示问题已解决' : '用户表示问题未解决'}
                 </span>
               </div>
             </div>
             
-            {selectedConversation.satisfaction?.comment && (
+            {currentSurvey.comment && (
               <div>
                 <span style={{ fontWeight: 'bold' }}>用户意见与建议：</span>
                 <div style={{ 
@@ -629,9 +705,9 @@ const Conversations: React.FC = () => {
                   padding: 16, 
                   background: '#f9f9f9', 
                   borderRadius: 4, 
-                  borderLeft: `4px solid ${selectedConversation.satisfaction?.solved === 'yes' ? '#52c41a' : '#ff4d4f'}`
+                  borderLeft: `4px solid ${currentSurvey.solved === 'yes' ? '#52c41a' : '#ff4d4f'}`
                 }}>
-                  {selectedConversation.satisfaction?.comment}
+                  {currentSurvey.comment}
                 </div>
               </div>
             )}
@@ -639,10 +715,10 @@ const Conversations: React.FC = () => {
             <Divider />
             
             <div>
-              <Button type="primary" onClick={() => showConversationDetail(selectedConversation.id)}>
+              <Button type="primary" onClick={() => showConversationDetail(currentConversation)}>
                 查看相关对话
               </Button>
-              <Button style={{ marginLeft: 8 }} onClick={() => navigate(`/branches?id=${selectedConversation.branchId}`)}>
+              <Button style={{ marginLeft: 8 }} onClick={() => navigate(`/branches?id=${branchFilter}`)}>
                 查看分支机构
               </Button>
             </div>

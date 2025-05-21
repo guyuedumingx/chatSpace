@@ -8,7 +8,8 @@ import {
   UserOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
-  MenuUnfoldOutlined
+  MenuUnfoldOutlined,
+  DatabaseOutlined
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 
@@ -42,6 +43,11 @@ const getMenuItems = (): MenuItem[] => [
     key: '/surveys',
     icon: <FileTextOutlined />,
     label: '满意度调查',
+  },
+  {
+    key: '/question-bank',
+    icon: <DatabaseOutlined />,
+    label: '问题库管理',
   },
 ];
 
