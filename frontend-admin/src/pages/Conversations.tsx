@@ -13,12 +13,10 @@ const { RangePicker } = DatePicker;
 interface ConversationData {
   id: string;
   time: string;
-  branchId: string;  // 修改为分支机构ID
-  branch: string;
+  branchId: string;  // 机构号
+  branchName: string;  // 一级分行名称
+  subBranchName: string;  // 网点名称
   topic: string;
-  messages: number;
-  duration: string;
-  status: 'active' | 'ended' | 'timeout';
   satisfaction?: {
     solved: 'yes' | 'no';
     comment?: string;
@@ -33,11 +31,17 @@ interface MessageData {
   timestamp: string;
 }
 
-// 网点层级结构接口
+// 分行选项
 interface BranchOption {
   value: string;
   label: string;
-  children?: BranchOption[];
+}
+
+// 网点选项
+interface SubBranchOption {
+  value: string;
+  label: string;
+  parentId: string;
 }
 
 // 模拟对话数据
@@ -45,12 +49,10 @@ const mockConversationData: ConversationData[] = [
   {
     id: 'session-1-20231116102345',
     time: '2023-11-16 10:23:45',
-    branchId: '1',
-    branch: '总行营业部',
+    branchId: '1001001',
+    branchName: '北京分行',
+    subBranchName: '朝阳支行',
     topic: '企业开户咨询',
-    messages: 8,
-    duration: '5分钟12秒',
-    status: 'ended',
     satisfaction: {
       solved: 'yes',
       comment: '解答很清晰，感谢帮助！',
@@ -61,11 +63,9 @@ const mockConversationData: ConversationData[] = [
     id: 'session-2-20231116111233',
     time: '2023-11-16 11:12:33',
     branchId: '2',
-    branch: '金融中心支行',
+    branchName: '金融中心支行',
+    subBranchName: '金融中心支行',
     topic: '对公转账限额',
-    messages: 6,
-    duration: '3分钟45秒',
-    status: 'ended',
     satisfaction: {
       solved: 'yes',
       timestamp: '2023-11-16 11:17:03'
@@ -75,11 +75,9 @@ const mockConversationData: ConversationData[] = [
     id: 'session-3-20231116134521',
     time: '2023-11-16 13:45:21',
     branchId: '3',
-    branch: '城东支行',
+    branchName: '城东支行',
+    subBranchName: '城东支行',
     topic: '网银开通流程',
-    messages: 12,
-    duration: '8分钟33秒',
-    status: 'ended',
     satisfaction: {
       solved: 'no',
       comment: '问题太复杂，需要人工处理',
@@ -90,11 +88,9 @@ const mockConversationData: ConversationData[] = [
     id: 'session-4-20231116140340',
     time: '2023-11-16 14:03:40',
     branchId: '1',
-    branch: '总行营业部',
+    branchName: '总行营业部',
+    subBranchName: '总行营业部',
     topic: '理财产品咨询',
-    messages: 10,
-    duration: '7分钟22秒',
-    status: 'ended',
     satisfaction: {
       solved: 'yes',
       comment: '非常满意，谢谢！',
@@ -105,11 +101,9 @@ const mockConversationData: ConversationData[] = [
     id: 'session-5-20231116150555',
     time: '2023-11-16 15:05:55',
     branchId: '5',
-    branch: '城西支行',
+    branchName: '城西支行',
+    subBranchName: '城西支行',
     topic: '密码重置问题',
-    messages: 4,
-    duration: '2分钟18秒',
-    status: 'timeout',
     satisfaction: {
       solved: 'no',
       comment: '需要提供更具体的信息',
@@ -120,11 +114,9 @@ const mockConversationData: ConversationData[] = [
     id: 'session-6-20231116161122',
     time: '2023-11-16 16:11:22',
     branchId: '6',
-    branch: '南湖支行',
+    branchName: '南湖支行',
+    subBranchName: '南湖支行',
     topic: '贷款申请咨询',
-    messages: 15,
-    duration: '11分钟5秒',
-    status: 'ended',
     satisfaction: {
       solved: 'yes',
       comment: '很满意，非常好用的服务',
@@ -135,11 +127,9 @@ const mockConversationData: ConversationData[] = [
     id: 'session-7-20231116170948',
     time: '2023-11-16 17:09:48',
     branchId: '7',
-    branch: '北区支行',
-    topic: '企业理财产品',
-    messages: 9,
-    duration: '6分钟42秒',
-    status: 'active',
+    branchName: '北区支行',
+    subBranchName: '北区支行',
+    topic: '企业理财产品'
   },
 ];
 
@@ -201,7 +191,6 @@ const Conversations: React.FC = () => {
   const [conversations, setConversations] = useState<ConversationData[]>(mockConversationData);
   const [dateRange, setDateRange] = useState<[string, string] | null>(null);
   const [branchFilter, setBranchFilter] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [solvedFilter, setSolvedFilter] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -210,7 +199,8 @@ const Conversations: React.FC = () => {
   const [currentMessages, setCurrentMessages] = useState<MessageData[]>([]);
   const [currentSurvey, setCurrentSurvey] = useState<ConversationData['satisfaction'] | null>(null);
   const [branchOptions, setBranchOptions] = useState<BranchOption[]>([]);
-  const [selectedBranch, setSelectedBranch] = useState<string[]>([]);
+  const [selectedBranch, setSelectedBranch] = useState<string | null>(null); // 选中的分行
+  const [branchIdFilter, setBranchIdFilter] = useState<string>(''); // 机构号筛选
   
   const location = useLocation();
   const navigate = useNavigate();
@@ -244,36 +234,16 @@ const Conversations: React.FC = () => {
       
       // 模拟层级结构数据
       const mockBranchOptions: BranchOption[] = [
-        {
-          value: '1000',
-          label: '总行',
-          children: [
-            {
-              value: '1001',
-              label: '北京分行',
-              children: [
-                { value: '1001001', label: '朝阳支行' },
-                { value: '1001002', label: '海淀支行' },
-              ]
-            },
-            {
-              value: '1002',
-              label: '上海分行',
-              children: [
-                { value: '1002001', label: '浦东支行' },
-                { value: '1002002', label: '黄浦支行' },
-              ]
-            },
-            {
-              value: '1003',
-              label: '广州分行',
-              children: [
-                { value: '1003001', label: '天河支行' },
-                { value: '1003002', label: '越秀支行' },
-              ]
-            }
-          ]
-        }
+        { value: '1001', label: '北京分行' },
+        { value: '1002', label: '上海分行' },
+        { value: '1003', label: '广州分行' }
+      ];
+      
+      const mockSubBranchOptions: SubBranchOption[] = [
+        { value: '1001001', label: '朝阳支行', parentId: '1001' },
+        { value: '1001002', label: '海淀支行', parentId: '1001' },
+        { value: '1002001', label: '浦东支行', parentId: '1002' },
+        { value: '1002002', label: '黄浦支行', parentId: '1002' }
       ];
       
       setBranchOptions(mockBranchOptions);
@@ -284,7 +254,7 @@ const Conversations: React.FC = () => {
 
   // 处理网点层级选择
   const handleBranchChange = (value: string[]) => {
-    setSelectedBranch(value);
+    setSelectedBranch(value[value.length - 1]);
     if (value && value.length > 0) {
       setBranchFilter(value[value.length - 1]);
     } else {
@@ -306,59 +276,31 @@ const Conversations: React.FC = () => {
       width: 150,
     },
     {
-      title: '分支机构',
-      dataIndex: 'branch',
-      key: 'branch',
+      title: '机构号',
+      dataIndex: 'branchId',
+      key: 'branchId',
+      width: 120,
+    },
+    {
+      title: '一级分行',
+      dataIndex: 'branchName',
+      key: 'branchName',
       width: 150,
       render: (text: string, record: ConversationData) => (
         <a onClick={() => navigate(`/branches?id=${record.branchId}`)}>{text}</a>
       ),
     },
     {
+      title: '网点',
+      dataIndex: 'subBranchName',
+      key: 'subBranchName',
+      width: 150,
+    },
+    {
       title: '主题',
       dataIndex: 'topic',
       key: 'topic',
       width: 180,
-    },
-    {
-      title: '消息数',
-      dataIndex: 'messages',
-      key: 'messages',
-      width: 100,
-      sorter: (a: ConversationData, b: ConversationData) => a.messages - b.messages,
-    },
-    {
-      title: '时长',
-      dataIndex: 'duration',
-      key: 'duration',
-      width: 120,
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
-      width: 100,
-      render: (status: string) => {
-        let color = 'default';
-        let text = '未知';
-        
-        switch (status) {
-          case 'active':
-            color = 'processing';
-            text = '进行中';
-            break;
-          case 'ended':
-            color = 'success';
-            text = '已结束';
-            break;
-          case 'timeout':
-            color = 'warning';
-            text = '超时';
-            break;
-        }
-        
-        return <Tag color={color}>{text}</Tag>;
-      },
     },
     {
       title: (
@@ -378,35 +320,18 @@ const Conversations: React.FC = () => {
         return (
           <Badge 
             status={satisfaction.solved === 'yes' ? 'success' : 'error'} 
-            text={
-              <a onClick={() => showSurveyDetail(satisfaction)}>
-                {satisfaction.solved === 'yes' ? '已解决' : '未解决'}
-              </a>
-            } 
+            text={satisfaction.solved === 'yes' ? '已解决' : '未解决'}
           />
         );
-      },
-      filters: [
-        { text: '已解决', value: 'yes' },
-        { text: '未解决', value: 'no' },
-        { text: '未评价', value: 'none' },
-      ],
-      onFilter: (value: boolean | Key, record: ConversationData) => {
-        if (value === 'none') return !record.satisfaction;
-        return record.satisfaction?.solved === value;
       },
     },
     {
       title: '操作',
       key: 'action',
-      width: 180,
+      width: 120,
       render: (_: unknown, record: ConversationData) => (
         <Space size="middle">
           <a onClick={() => showConversationDetail(record.id)}>查看对话</a>
-          {record.satisfaction && (
-            <a onClick={() => showSurveyDetail(record.satisfaction)}>满意度详情</a>
-          )}
-          <a href={`/conversations/${record.id}/export`}>导出</a>
         </Space>
       ),
     },
@@ -416,19 +341,25 @@ const Conversations: React.FC = () => {
   const handleFilter = () => {
     let filtered = [...mockConversationData];
     
+    // 机构号筛选
+    if (branchIdFilter) {
+      filtered = filtered.filter(conv => 
+        conv.branchId.includes(branchIdFilter)
+      );
+    }
+    
+    // 分行筛选
+    if (selectedBranch) {
+      filtered = filtered.filter(conv => 
+        conv.branchName === selectedBranch
+      );
+    }
+    
     if (searchTerm) {
       filtered = filtered.filter(conv => 
         conv.topic.toLowerCase().includes(searchTerm.toLowerCase()) ||
         conv.id.toLowerCase().includes(searchTerm.toLowerCase())
       );
-    }
-    
-    if (branchFilter) {
-      filtered = filtered.filter(conv => conv.branchId === branchFilter);
-    }
-    
-    if (statusFilter) {
-      filtered = filtered.filter(conv => conv.status === statusFilter);
     }
     
     if (solvedFilter) {
@@ -453,10 +384,10 @@ const Conversations: React.FC = () => {
   };
 
   const handleReset = () => {
+    setSelectedBranch(null);
+    setBranchIdFilter('');
     setSearchTerm('');
     setBranchFilter(null);
-    setSelectedBranch([]);
-    setStatusFilter(null);
     setSolvedFilter(null);
     setDateRange(null);
     setConversations(mockConversationData);
@@ -471,17 +402,6 @@ const Conversations: React.FC = () => {
     setIsModalVisible(true);
   };
   
-  // 显示满意度调查详情
-  const showSurveyDetail = (satisfaction: ConversationData['satisfaction']) => {
-    if (!satisfaction) return;
-    
-    const conversation = mockConversationData.find(
-      c => c.satisfaction?.timestamp === satisfaction.timestamp
-    );
-    setCurrentSurvey(conversation?.satisfaction || null);
-    setIsSurveyModalVisible(true);
-  };
-
   // 找到当前会话
   const currentConversation = currentConversationId 
     ? mockConversationData.find(c => c.id === currentConversationId) 
@@ -493,30 +413,26 @@ const Conversations: React.FC = () => {
       
       <Card bordered={false}>
         <Space style={{ marginBottom: 16 }} wrap>
-          <Cascader
-            options={branchOptions}
-            placeholder="选择网点层级"
-            style={{ width: 300 }}
+          <Select
+            placeholder="选择分行"
+            style={{ width: 150 }}
             value={selectedBranch}
-            onChange={handleBranchChange as any}
-            changeOnSelect
-          />
-          
-          <Select
-            placeholder="对话状态"
-            style={{ width: 120 }}
+            onChange={value => {
+              setSelectedBranch(value);
+            }}
+            options={branchOptions}
             allowClear
-            value={statusFilter || undefined}
-            onChange={value => setStatusFilter(value)}
-            options={[
-              { value: 'active', label: '进行中' },
-              { value: 'ended', label: '已结束' },
-              { value: 'timeout', label: '超时结束' }
-            ]}
+          />
+          
+          <Input
+            placeholder="机构号"
+            value={branchIdFilter}
+            onChange={e => setBranchIdFilter(e.target.value)}
+            style={{ width: 120 }}
           />
           
           <Select
-            placeholder="问题解决"
+            placeholder="满意度"
             style={{ width: 120 }}
             allowClear
             value={solvedFilter || undefined}
@@ -596,14 +512,14 @@ const Conversations: React.FC = () => {
                 {currentConversation.time}
               </Col>
               <Col span={8}>
-                <span style={{ fontWeight: 'bold' }}><ShopOutlined /> 分支机构：</span>
+                <span style={{ fontWeight: 'bold' }}><ShopOutlined /> 一级分行：</span>
                 <a onClick={() => navigate(`/branches?id=${currentConversation.branchId}`)}>
-                  {currentConversation.branch}
+                  {currentConversation.branchName}
                 </a>
               </Col>
               <Col span={8}>
-                <span style={{ fontWeight: 'bold' }}><CommentOutlined /> 主题：</span>
-                {currentConversation.topic}
+                <span style={{ fontWeight: 'bold' }}><ShopOutlined /> 网点：</span>
+                {currentConversation.subBranchName}
               </Col>
             </Row>
             
@@ -657,84 +573,6 @@ const Conversations: React.FC = () => {
                 )}
               </div>
             )}
-          </div>
-        )}
-      </Modal>
-      
-      {/* 满意度详情弹窗 */}
-      <Modal
-        title="满意度调查详情"
-        open={isSurveyModalVisible}
-        onCancel={() => setIsSurveyModalVisible(false)}
-        footer={[
-          <Button key="close" onClick={() => setIsSurveyModalVisible(false)}>
-            关闭
-          </Button>,
-        ]}
-      >
-        {currentSurvey && (
-          <div>
-            <Row gutter={[16, 16]}>
-              <Col span={12}>
-                <span style={{ fontWeight: 'bold' }}><ShopOutlined /> 分支机构：</span>
-                {currentConversation?.branch || ''}
-              </Col>
-              <Col span={12}>
-                <span style={{ fontWeight: 'bold' }}><ClockCircleOutlined /> 提交时间：</span>
-                {currentSurvey.timestamp}
-              </Col>
-            </Row>
-            
-            <Divider />
-            
-            <div style={{ marginBottom: 16 }}>
-              <Progress 
-                type="circle" 
-                percent={currentSurvey.solved === 'yes' ? 100 : 0} 
-                format={() => currentSurvey.solved === 'yes' ? '已解决' : '未解决'}
-                status={currentSurvey.solved === 'yes' ? 'success' : 'exception'}
-                width={80}
-              />
-              <div style={{ marginTop: 16 }}>
-                <span style={{ fontWeight: 'bold' }}>问题解决情况：</span>
-                <span>
-                  {currentSurvey.solved === 'yes' ? '用户表示问题已解决' : '用户表示问题未解决'}
-                </span>
-              </div>
-            </div>
-            
-            {currentSurvey.comment && (
-              <div>
-                <span style={{ fontWeight: 'bold' }}>用户意见与建议：</span>
-                <div style={{ 
-                  marginTop: 8, 
-                  padding: 16, 
-                  background: '#f9f9f9', 
-                  borderRadius: 4, 
-                  borderLeft: `4px solid ${currentSurvey.solved === 'yes' ? '#52c41a' : '#ff4d4f'}`
-                }}>
-                  {currentSurvey.comment}
-                </div>
-              </div>
-            )}
-            
-            <Divider />
-            
-            <div>
-              {currentConversationId && (
-                <Button type="primary" onClick={() => showConversationDetail(currentConversationId)}>
-                  查看相关对话
-                </Button>
-              )}
-              {currentConversation && (
-                <Button 
-                  style={{ marginLeft: 8 }} 
-                  onClick={() => navigate(`/branches?id=${currentConversation.branchId}`)}
-                >
-                  查看分支机构
-                </Button>
-              )}
-            </div>
           </div>
         )}
       </Modal>
