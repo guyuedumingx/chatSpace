@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Card, Select, DatePicker, Button, Space, Row, Col, Statistic, Tooltip, Spin, Alert, Empty } from 'antd';
-import { ShopOutlined, CommentOutlined, TeamOutlined, StarOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { Table, Card, Select, DatePicker, Button, Space, Row, Col, Statistic, Tooltip, Spin, Alert, Empty, Cascader, Input } from 'antd';
+import { ShopOutlined,/* CommentOutlined, TeamOutlined, StarOutlined, InfoCircleOutlined */ } from '@ant-design/icons';
 import type { RangePickerProps } from 'antd/es/date-picker';
 import type { Dayjs } from 'dayjs';
 import { getBranchesData } from '../api';
@@ -15,6 +15,13 @@ interface BranchDataUI extends Branch {
   key: string;
 }
 
+// 网点层级结构接口
+interface BranchOption {
+  value: string;
+  label: string;
+  children?: BranchOption[];
+}
+
 const Branches: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +31,8 @@ const Branches: React.FC = () => {
   const [keyword, setKeyword] = useState<string>('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [branchOptions, setBranchOptions] = useState<BranchOption[]>([]);
+  const [selectedBranch, setSelectedBranch] = useState<string[]>([]);
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -37,7 +46,56 @@ const Branches: React.FC = () => {
     }
     
     fetchBranchesData();
+    fetchBranchOptions();
   }, [location]);
+
+  // 获取网点层级结构数据
+  const fetchBranchOptions = async () => {
+    try {
+      // TODO: 后端接口对接
+      // 接口路径: /api/v1/admin/branches/hierarchy
+      // 请求方法: GET
+      // 返回格式: BranchOption[]
+      
+      // 模拟层级结构数据
+      const mockBranchOptions: BranchOption[] = [
+        {
+          value: '1000',
+          label: '总行',
+          children: [
+            {
+              value: '1001',
+              label: '北京分行',
+              children: [
+                { value: '1001001', label: '朝阳支行' },
+                { value: '1001002', label: '海淀支行' },
+              ]
+            },
+            {
+              value: '1002',
+              label: '上海分行',
+              children: [
+                { value: '1002001', label: '浦东支行' },
+                { value: '1002002', label: '黄浦支行' },
+              ]
+            },
+            {
+              value: '1003',
+              label: '广州分行',
+              children: [
+                { value: '1003001', label: '天河支行' },
+                { value: '1003002', label: '越秀支行' },
+              ]
+            }
+          ]
+        }
+      ];
+      
+      setBranchOptions(mockBranchOptions);
+    } catch (err) {
+      console.error('获取网点层级结构失败:', err);
+    }
+  };
 
   const fetchBranchesData = async (pageNum = page, pageSizeNum = pageSize) => {
     try {
@@ -56,6 +114,15 @@ const Branches: React.FC = () => {
         params.endDate = dateRange[1].format('YYYY-MM-DD');
       }
 
+      if (selectedBranch && selectedBranch.length > 0) {
+        params.branchId = selectedBranch[selectedBranch.length - 1];
+      }
+
+      // TODO: 后端接口对接
+      // 接口路径: /api/v1/admin/branches
+      // 请求方法: GET
+      // 请求参数: params
+      // 返回格式: { data: Branch[], total: number, page: number, pageSize: number }
       const response = await getBranchesData(params);
       
       if (response.data) {
@@ -92,18 +159,22 @@ const Branches: React.FC = () => {
       dataIndex: 'orgName',
       key: 'orgName',
     },
+    /* 
+    // TODO: 对话次数字段 - 已注释
     {
       title: '对话次数',
       dataIndex: 'conversationCount',
       key: 'conversationCount',
       sorter: (a: BranchDataUI, b: BranchDataUI) => a.conversationCount - b.conversationCount,
     },
+    // TODO: 活跃用户数字段 - 已注释
     {
       title: '活跃用户数',
       dataIndex: 'dailyActiveUsers',
       key: 'dailyActiveUsers',
       sorter: (a: BranchDataUI, b: BranchDataUI) => a.dailyActiveUsers - b.dailyActiveUsers,
     },
+    // TODO: 平均满意度字段 - 已注释
     {
       title: '平均满意度',
       dataIndex: 'avgSatisfactionRate',
@@ -117,6 +188,7 @@ const Branches: React.FC = () => {
         return <span style={{ color: '#faad14' }}>{stars} ({(rate * 100).toFixed(1)}%)</span>;
       },
     },
+    // TODO: 问题解决率字段 - 已注释
     {
       title: (
         <span>
@@ -138,6 +210,7 @@ const Branches: React.FC = () => {
         return <span style={{ color }}>{percentRate.toFixed(1)}%</span>;
       }
     },
+    */
     {
       title: '操作',
       key: 'action',
@@ -160,6 +233,7 @@ const Branches: React.FC = () => {
   const handleReset = () => {
     setKeyword('');
     setDateRange(null);
+    setSelectedBranch([]);
     navigate('/branches');
     fetchBranchesData(1, pageSize);
   };
@@ -173,6 +247,11 @@ const Branches: React.FC = () => {
     if (pagination.current && pagination.pageSize) {
       fetchBranchesData(pagination.current, pagination.pageSize);
     }
+  };
+
+  // 处理网点层级选择
+  const handleBranchChange = (value: string[]) => {
+    setSelectedBranch(value);
   };
 
   if (error) {
@@ -201,6 +280,8 @@ const Branches: React.FC = () => {
             />
           </Card>
         </Col>
+        {/* 
+        // TODO: 总对话次数统计 - 已注释
         <Col xs={24} sm={12} lg={6}>
           <Card bordered={false}>
             <Statistic
@@ -210,6 +291,7 @@ const Branches: React.FC = () => {
             />
           </Card>
         </Col>
+        // TODO: 活跃用户数统计 - 已注释
         <Col xs={24} sm={12} lg={6}>
           <Card bordered={false}>
             <Statistic
@@ -219,6 +301,7 @@ const Branches: React.FC = () => {
             />
           </Card>
         </Col>
+        // TODO: 平均满意度统计 - 已注释
         <Col xs={24} sm={12} lg={6}>
           <Card bordered={false}>
             <Statistic
@@ -229,18 +312,24 @@ const Branches: React.FC = () => {
             />
           </Card>
         </Col>
+        */}
       </Row>
       
       <Card bordered={false}>
-        <Space style={{ marginBottom: 16 }}>
-          <Select
-            placeholder="搜索网点"
+        <Space style={{ marginBottom: 16 }} wrap>
+          <Cascader
+            options={branchOptions}
+            placeholder="选择网点层级"
+            style={{ width: 300 }}
+            value={selectedBranch}
+            onChange={handleBranchChange as any}
+            changeOnSelect
+          />
+          <Input 
+            placeholder="搜索网点名称"
             style={{ width: 200 }}
-            allowClear
-            showSearch
-            value={keyword || undefined}
-            onChange={value => setKeyword(value)}
-            options={branches.map(branch => ({ value: branch.orgCode, label: branch.orgName }))}
+            value={keyword}
+            onChange={e => setKeyword(e.target.value)}
           />
           <RangePicker 
             disabledDate={disabledDate} 
