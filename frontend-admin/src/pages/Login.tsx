@@ -28,15 +28,12 @@ const Login: React.FC = () => {
   }) => {
     setLoading(true);
     try {
-      console.log('正在尝试登录...');
       const response = await login(values.orgCode, values.password);
-      console.log('登录响应:', response.data);
       
-      if (response.data.access_token) {
+      if (response.access_token) {
         // 保存登录信息
-        localStorage.setItem('token', response.data.access_token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        console.log('令牌已保存到localStorage');
+        localStorage.setItem('token', response.access_token);
+        localStorage.setItem('user', JSON.stringify(response.user));
         
         messageApi.success('登录成功');
         
@@ -45,19 +42,15 @@ const Login: React.FC = () => {
           // 如果是浏览器直接刷新登录页，使用window.location
           // 否则使用React Router导航
           if (window.location.pathname === '/login') {
-            console.log('使用window.location重定向到', from);
             window.location.href = from;
           } else {
-            console.log('使用navigate重定向到', from);
             navigate(from, { replace: true });
           }
         }, 1000);
       } else {
-        console.error('登录响应中没有access_token');
         messageApi.error('登录失败，请检查您的机构号和密码');
       }
     } catch (error) {
-      console.error('登录错误:', error);
       messageApi.error('登录失败，请检查您的机构号和密码');
     } finally {
       setLoading(false);

@@ -48,8 +48,18 @@ axios.interceptors.response.use(
 );
 
 // 登录
-export const login = (orgCode: string, password: string) => {
-  return axios.post('/admin/login', { orgCode, password });
+export const login = async (orgCode: string, password: string) => {
+  const response = await fetch(API_BASE_URL + '/admin/login', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      username: orgCode,
+      password: password,
+    }),
+  });
+  return response.json();
 };
 
 // 修改密码

@@ -1,4 +1,5 @@
 from fastapi import HTTPException, Depends, APIRouter
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from database.config import get_db
 from database.crud import org
@@ -89,10 +90,10 @@ mock_users = [
 ]
 
 @router.post("/api/admin/login")
-async def admin_login(data: dict):
+async def admin_login(db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()):
     # 简单的登录验证，实际环境中应做更强的安全措施
-    org_code = data.get("orgCode")
-    password = data.get("password")
+    org_code = form_data.username
+    password = form_data.password
     
     # 查找用户
     user = next((u for u in mock_users if u["orgCode"] == org_code), None)
