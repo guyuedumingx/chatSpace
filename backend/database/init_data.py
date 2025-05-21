@@ -1,3 +1,4 @@
+from security import get_password_hash
 from sqlalchemy.orm import Session
 from datetime import datetime
 from .models import Org, HotTopic
@@ -11,14 +12,23 @@ def init_org_data(db: Session):
     
     # 创建默认组织
     org = Org(
-        orgCode="36909",
+        orgCode="36908",
         orgName="集约运营中心（广东）",
-        password="123456",
+        password=get_password_hash("123456"),
         isFirstLogin=True,
-        passwordLastChanged=datetime.now()
+        passwordLastChanged=datetime.now(),
     )
     db.add(org)
-    db.commit()
+    # 创建默认组织
+    org = Org(
+        orgCode="36909",
+        orgName="集约运营中心（湖北）",
+        password=get_password_hash("123456"),
+        isFirstLogin=True,
+        passwordLastChanged=datetime.now(),
+    )
+    db.add(org)
+    db.commit()  # 先提交事务，确保实体被持久化
     db.refresh(org)
 
 

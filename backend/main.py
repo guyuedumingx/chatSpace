@@ -1,15 +1,13 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 import uvicorn
 from admin_api import router as admin_router
-from api import router as api_router
+from api_v1.base import router as base_router
 from database.config import get_db, init_db
-from database.config import get_db, init_db
-import database.models as models
-from database.crud import org, session as session_crud, chat, message, hot_topic
-from database import schema
 from database.init_data import init_all_data
+from api_v1.auth import router as auth_router
+from api_v1.survey import router as survey_router
+from api_v1.chat import router as chat_router
 
 app = FastAPI()
 
@@ -33,7 +31,10 @@ app.add_middleware(
 
 # 注册管理API路由
 app.include_router(admin_router)
-app.include_router(api_router)
+app.include_router(base_router)
+app.include_router(auth_router)
+app.include_router(survey_router)
+app.include_router(chat_router)
 
 # # Initialize chatbot
 # chatbot = QwenChatbot()

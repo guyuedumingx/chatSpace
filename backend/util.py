@@ -12,15 +12,15 @@ def mask_address(address: str) -> str:
     for part in parts:
         if part:
             # 只保留后缀
-            if part.endswith('省'):
-                masked += '**省'
-            elif part.endswith('市'):
-                masked += '**市'
-            elif part.endswith('区'):
-                masked += '**区'
-            elif part.endswith('县'):
-                masked += '**县'
-            elif part.endswith('镇'):
+            # if part.endswith('省'):
+            #     masked += '**省'
+            # elif part.endswith('市'):
+            #     masked += '**市'
+            # elif part.endswith('区'):
+            #     masked += '**区'
+            # elif part.endswith('县'):
+            #     masked += '**县'
+            if part.endswith('镇'):
                 masked += '**镇'
             elif part.endswith('乡'):
                 masked += '**乡'

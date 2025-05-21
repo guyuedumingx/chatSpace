@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any, Type, TypeVar, Generic
 from pydantic import BaseModel
-
+from datetime import datetime
 from .models import Org, Session as SessionModel, Chat as ChatModel, Message as MessageModel, HotTopic as HotTopicModel
 from beans.org import Org as OrgBean
 from beans.session import Session as SessionBean
@@ -84,7 +84,6 @@ class CRUDOrg(CRUDBase[Org, CreateSchemaType]):
         """更改组织密码"""
         org = self.getByOrgCode(db, orgCode)
         if org:
-            from datetime import datetime
             org.password = newPassword
             org.passwordLastChanged = datetime.now()
             org.isFirstLogin = False
@@ -113,7 +112,7 @@ class CRUDSession(CRUDBase[SessionModel, CreateSchemaType]):
     
     def getByOrg(self, db: Session, orgCode: str) -> Optional[SessionModel]:
         """获取组织的会话（一个组织只有一个会话）"""
-        return db.query(self.model).filter(self.model.orgCode == orgCode).first()
+        return db.query(self.model).filter(self.model.orgCode == orgCode).filter(self.model.isDeleted == False).first()
     
     def toBean(self, dbSession: SessionModel, includeChats: bool = False) -> SessionBean:
         """将数据库会话对象转换为Bean对象"""
@@ -136,7 +135,7 @@ class CRUDChat(CRUDBase[ChatModel, CreateSchemaType]):
     
     def getBySession(self, db: Session, sessionId: str) -> List[ChatModel]:
         """获取会话的所有对话"""
-        return db.query(self.model).filter(self.model.sessionId == sessionId).all()
+        return db.query(self.model).filter(self.model.sessionId == sessionId).filter(self.model.isDeleted == False).all()
     
     def toBean(self, dbChat: ChatModel, includeMessages: bool = False) -> ChatBean:
         """将数据库对话对象转换为Bean对象"""

@@ -27,6 +27,7 @@ class Session(Base):
     sessionId = Column(String, unique=True, index=True, default=lambda: str(uuid.uuid4()))
     orgCode = Column(String, ForeignKey("organizations.orgCode"), unique=True)
     createdAt = Column(DateTime, default=datetime.now)
+    isDeleted = Column(Boolean, default=False)
 
     # 关系：一个会话属于一个组织，一个会话有多个对话
     organization = relationship("Org", back_populates="session")
@@ -42,7 +43,7 @@ class Chat(Base):
     chatName = Column(String, nullable=False)
     title = Column(String, nullable=True)
     createdAt = Column(DateTime, default=datetime.now)
-
+    isDeleted = Column(Boolean, default=False)
     # 关系：一个对话属于一个会话，一个对话有多条消息
     session = relationship("Session", back_populates="chats")
     messages = relationship("Message", back_populates="chat", cascade="all, delete-orphan")

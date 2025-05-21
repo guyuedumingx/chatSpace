@@ -8,14 +8,6 @@ from security import create_access_token
 
 router = APIRouter(prefix="/api/admin")
 
-mock_users = [
-    {
-        "orgCode": "36909",
-        "orgName": "集约运营中心（广东）",
-        "password": "123456"
-    }
-]
-
 # 模拟数据 - 在实际应用中应从数据库获取
 mock_organizations = [
     {
@@ -376,31 +368,3 @@ async def export_data(
 ):
     # 这里只返回一个模拟消息，在实际应用中应生成并返回CSV文件
     return {"message": f"导出 {data_type} 数据成功"} 
-
-@router.post("/login")
-async def login(data: dict):
-    # 简单的登录验证，实际环境中应做更强的安全措施
-    org_code = data.get("orgCode")
-    password = data.get("password")
-    
-    # 查找用户
-    user = next((u for u in mock_users if u["orgCode"] == org_code), None)
-    if not user or user["password"] != password:
-        raise HTTPException(
-            status_code=401, 
-            detail="无效的机构号或密码"
-        )
-    
-    # 生成token
-    access_token = create_access_token({"sub": org_code})
-    
-    # 返回登录信息
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": {
-            "orgCode": user["orgCode"],
-            "orgName": user["orgName"],
-            "role": "admin"
-        }
-    }

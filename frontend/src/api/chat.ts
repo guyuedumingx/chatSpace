@@ -55,13 +55,13 @@ export const sendMessage = async (message: string): Promise<ChatResponse> => {
 export const chatApi = {
   // 获取会话列表
   getConversations: async (orgCode: string) => {
-    const response = await axios.get(`${API_BASE_URL}/sessions/${orgCode}`);
+    const response = await axios.get(`${API_BASE_URL}/chat/${orgCode}`);
     return response.data;
   },
 
   // 创建新会话
   createConversation: async (name: string, orgCode: string) => {
-    const response = await axios.post(`${API_BASE_URL}/sessions`, {
+    const response = await axios.post(`${API_BASE_URL}/chat`, {
       label: name,
       orgCode: orgCode
     });
@@ -70,7 +70,7 @@ export const chatApi = {
 
   // 删除会话
   deleteConversation: async (key: string) => {
-    const response = await axios.delete(`${API_BASE_URL}/sessions/${key}`);
+    const response = await axios.delete(`${API_BASE_URL}/chat/${key}`);
     return response.data;
   },
 
