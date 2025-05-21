@@ -1,53 +1,25 @@
-from fastapi import HTTPException, Depends, APIRouter
+from fastapi import HTTPException, Depends, APIRouter, Query
 from datetime import datetime, timedelta
 import uvicorn
 from sqlalchemy.orm import Session
+from typing import List, Dict, Any
+from pydantic import BaseModel
 
 from database.config import get_db
-from database.crud import org, session as session_crud, chat, message, hot_topic
+from database.crud import org, session as session_crud, chat, message
 from database import schema
+from database.models import Topic
+from search import search_topics
 
 
 # 创建路由器
 router = APIRouter(prefix="/api")
 
-mock_hot_topics = [
-  {
-    "key": "1-1",
-    "description": "如何办理对公账户开户？",
-    "icon": "1",
-  },
-  {
-    "key": "1-2",
-    "description": "企业网银如何开通？",
-    "icon": "2",
-  },
-  {
-    "key": "1-3",
-    "description": "对公转账限额是多少？",
-    "icon": "3",
-  },
-  {
-    "key": "1-4",
-    "description": "如何申请企业贷款？",
-    "icon": "4",
-  },
-  {
-    "key": "1-5",
-    "description": "企业理财有哪些产品？",
-    "icon": "5",
-  },
-]
-
 
 @router.get("/hot_topics")
 async def get_hot_topics(db: Session = Depends(get_db)):
     # 从数据库获取热门话题
-    db_hot_topics = hot_topic.getAllOrderedByOrder(db)
-    
-    # 如果数据库中没有热门话题，则返回模拟数据
-    if not db_hot_topics:
-        return mock_hot_topics
+    db_hot_topics = db.query(Topic).filter(Topic.isDeleted == False).order_by(Topic.order).limit(5).all()
     
     # 转换为前端所需格式
     topics = []
@@ -55,7 +27,7 @@ async def get_hot_topics(db: Session = Depends(get_db)):
         topics.append({
             "key": topic.topicId,
             "description": topic.description,
-            "icon": topic.icon or ""
+            "icon": topic.order  # 使用order字段替代icon
         })
     
     return topics
@@ -72,6 +44,27 @@ async def get_org_info(orgCode: str, db: Session = Depends(get_db)):
         "lastPasswordChangeTime": db_org.passwordLastChanged.isoformat()
     }
 
+class SearchResponse(BaseModel):
+    results: List[Dict[str, Any]]
+    total: int
+
+@router.get("/search", response_model=SearchResponse)
+async def search(
+    q: str = Query(..., description="搜索关键词"),
+    limit: int = Query(10, description="返回结果数量上限"),
+    db: Session = Depends(get_db)
+):
+    """
+    全文搜索Topic
+    
+    - **q**: 搜索关键词
+    - **limit**: 返回结果数量上限
+    """
+    results = search_topics(q, limit)
+    return SearchResponse(
+        results=results,
+        total=len(results)
+    )
 
 if __name__ == "__main__":
     uvicorn.run("api:router", host="0.0.0.0", port=8000)

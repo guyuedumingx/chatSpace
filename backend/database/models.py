@@ -64,11 +64,27 @@ class Message(Base):
     chat = relationship("Chat", back_populates="messages")
 
 
-class HotTopic(Base):
-    __tablename__ = "hot_topics"
+class Topic(Base):
+    __tablename__ = "topics"
     
     id = Column(Integer, primary_key=True, index=True)
     topicId = Column(String, unique=True, index=True, default=lambda: str(uuid.uuid4()))
+    inTrcd = Column(String, nullable=False)
+    trcd = Column(String, nullable=False)
+    topicType = Column(String, nullable=False)
     description = Column(String, nullable=False)
-    icon = Column(String, nullable=True)
+    operator = Column(String, nullable=False)
+    addition = Column(String, nullable=True)
     order = Column(Integer, default=0)  # 排序字段 
+    keywords = Column(String, nullable=True)
+    createdAt = Column(DateTime, default=datetime.now)
+    isDeleted = Column(Boolean, default=False)
+
+    def __getitem__(self, item):
+        return getattr(self, item)
+
+    def __setitem__(self, key, value):
+        setattr(self, key, value)
+    
+    def __delitem__(self, key):
+        delattr(self, key)

@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any, Type, TypeVar, Generic
 from pydantic import BaseModel
 from datetime import datetime
-from .models import Org, Session as SessionModel, Chat as ChatModel, Message as MessageModel, HotTopic as HotTopicModel
+from .models import Org, Session as SessionModel, Chat as ChatModel, Message as MessageModel, Topic as TopicModel
 from beans.org import Org as OrgBean
 from beans.session import Session as SessionBean
 from beans.chat import Chat as ChatBean
@@ -133,9 +133,9 @@ class CRUDChat(CRUDBase[ChatModel, CreateSchemaType]):
         """通过chatId获取对话"""
         return db.query(self.model).filter(self.model.chatId == chatId).first()
     
-    def getBySession(self, db: Session, sessionId: str) -> List[ChatModel]:
+    def getBySessionTop5(self, db: Session, sessionId: str) -> List[ChatModel]:
         """获取会话的所有对话"""
-        return db.query(self.model).filter(self.model.sessionId == sessionId).filter(self.model.isDeleted == False).all()
+        return db.query(self.model).filter(self.model.sessionId == sessionId).filter(self.model.isDeleted == False).order_by(self.model.createdAt.desc()).limit(20).all()
     
     def toBean(self, dbChat: ChatModel, includeMessages: bool = False) -> ChatBean:
         """将数据库对话对象转换为Bean对象"""
@@ -176,15 +176,19 @@ class CRUDMessage(CRUDBase[MessageModel, CreateSchemaType]):
         )
 
 
-class CRUDHotTopic(CRUDBase[HotTopicModel, CreateSchemaType]):
-    """热门话题CRUD操作"""
+class CRUDTopic(CRUDBase[TopicModel, CreateSchemaType]):
+    """话题CRUD操作"""
     
-    def getByTopicId(self, db: Session, topicId: str) -> Optional[HotTopicModel]:
-        """通过topicId获取热门话题"""
+    def getByTopicId(self, db: Session, topicId: str) -> Optional[TopicModel]:
+        """通过topicId获取话题"""
         return db.query(self.model).filter(self.model.topicId == topicId).first()
     
-    def getAllOrderedByOrder(self, db: Session) -> List[HotTopicModel]:
-        """获取所有热门话题，按order字段排序"""
+    def getByTopicName(self, db: Session, topicName: str) -> Optional[TopicModel]:
+        """通过topicName获取话题"""
+        return db.query(self.model).filter(self.model.description == topicName).first()
+    
+    def getAllOrderedByOrder(self, db: Session) -> List[TopicModel]:
+        """获取所有话题，按order字段排序"""
         return db.query(self.model).order_by(self.model.order).all()
 
 
@@ -193,4 +197,4 @@ org = CRUDOrg(Org)
 session = CRUDSession(SessionModel)
 chat = CRUDChat(ChatModel)
 message = CRUDMessage(MessageModel)
-hot_topic = CRUDHotTopic(HotTopicModel) 
+topic = CRUDTopic(TopicModel) 

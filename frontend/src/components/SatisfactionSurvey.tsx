@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal, Radio, Input, message } from 'antd';
+import { ContactInfo } from '@/api/chat';
 
 interface SatisfactionSurveyProps {
   visible: boolean;
@@ -8,11 +9,10 @@ interface SatisfactionSurveyProps {
     solved: 'yes' | 'no';
     comment?: string;
   }) => void;
-  contactName: string;
-  contactPhone: string;
+  contactInfo: ContactInfo[];
 }
 
-const SatisfactionSurvey: React.FC<SatisfactionSurveyProps> = ({ visible, onClose, onSubmit, contactName, contactPhone }) => {
+const SatisfactionSurvey: React.FC<SatisfactionSurveyProps> = ({ visible, onClose, onSubmit, contactInfo }) => {
   const [solved, setSolved] = React.useState<'yes' | 'no' | undefined>();
   const [comment, setComment] = React.useState('');
   const [messageApi, contextHolder] = message.useMessage();
@@ -55,7 +55,9 @@ const SatisfactionSurvey: React.FC<SatisfactionSurveyProps> = ({ visible, onClos
       {solved === 'no' && (
         <div style={{ marginBottom: 16, color: '#faad14' }}>
           <div style={{ marginBottom: 8 }}>如需进一步帮助，请联系：</div>
-          <div>联系人：{contactName}　电话：{contactPhone}</div>
+          {contactInfo.map((contact, index) => (
+            <div key={index}>联系人：{contact.contactName}　电话：{contact.contactPhone}</div>
+          ))}
         </div>
       )}
       <div>

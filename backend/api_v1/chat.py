@@ -5,90 +5,42 @@ from database import schema, models
 from datetime import datetime, timedelta
 from util import mask_sensitive
 from sqlalchemy.orm import Session
+from database.crud import topic as topic_crud
+from search import search_topics
 
 router = APIRouter()
 
-# Mock data based on keywords
-mock_keyword_responses = [
-    {
-        "id": "resp-account-open",
-        "keywords": ["账户", "开户"],
-        "response_content": "关于账户开户，您需要准备A、B、C材料，然后前往任一网点办理。详情请咨询您的客户经理。",
-        "prompt_label": "如何办理对公账户开户？"
-    },
-    {
-        "id": "resp-ebanking-setup",
-        "keywords": ["网银", "企业网银", "开通"],
-        "response_content": "企业网银可以通过我们的官方网站在线申请，或前往柜台由客户经理协助开通。具体流程请参考官网指南。",
-        "prompt_label": "企业网银如何开通？"
-    },
-    {
-        "id": "resp-loan-application",
-        "keywords": ["贷款", "企业贷款"],
-        "response_content": "企业贷款需要根据您的企业资质和经营情况进行评估，请联系您的客户经理或在线提交预审申请以获取更详细的信息。",
-        "prompt_label": "如何申请企业贷款？"
-    },
-    {
-        "id": "resp-transfer-limit",
-        "keywords": ["限额", "转账限额"],
-        "response_content": "对公账户的转账限额根据您的账户类型和签约服务有所不同。具体限额请查询您的服务协议或通过网银/手机银行查看。",
-        "prompt_label": "对公转账限额是多少？"
-    },
-    {
-        "id": "resp-password-generic",
-        "keywords": ["密码"], # Generic keyword, might lead to prompts if other password keywords also match
-        "response_content": "关于密码问题，请您提供更详细的信息，例如是登录密码、支付密码还是其他类型的密码问题？",
-        "prompt_label": "密码相关通用咨询"
-    },
-    {
-        "id": "resp-password-login-forgot",
-        "keywords": ["登录密码", "忘记密码", "重置密码"],
-        "response_content": "如果您忘记了登录密码，可以通过手机银行App或官方网站的忘记密码功能进行重置，通常需要验证您的注册手机号或预留信息。",
-        "prompt_label": "忘记登录密码怎么办？"
-    },
-    {
-        "id": "resp-password-payment",
-        "keywords": ["支付密码", "交易密码"],
-        "response_content": "支付密码用于交易验证。如果您遇到支付密码问题，如忘记或锁定，请联系客服或前往柜台处理。",
-        "prompt_label": "支付密码相关问题"
-    },
-    {
-        "id": "resp-product-wealth",
-        "keywords": ["理财", "理财产品"],
-        "response_content": "我们提供多种企业理财产品，包括不同期限和风险等级的选择。您可以咨询您的客户经理或访问我们的企业金融板块了解详情。",
-        "prompt_label": "企业理财有哪些产品？"
-    }
-]
-
 default_mock_response_content = "抱歉，我暂时无法理解您的问题。您可以尝试换一种问法，或者咨询人工客服。"
 
-def generate_assistant_reply(user_content: str):
+def generate_assistant_reply(user_content: str, db: Session):
     user_content = user_content.lower()
     matched_responses = []
+    topic = topic_crud.getByTopicName(db, topicName=user_content)
+    if topic:
+        matched_responses.append(topic)
+    else:
+        search_results = search_topics(user_content, 5)
+        if search_results:
+            matched_responses = search_results
 
-    for resp_data in mock_keyword_responses:
-        if resp_data['prompt_label'] == user_content:
-            matched_responses.append(resp_data)
-            break
-
-    if not matched_responses:
-        for resp_data in mock_keyword_responses:
-            for keyword in resp_data["keywords"]:
-                if keyword.lower() in user_content:
-                    matched_responses.append(resp_data)
-                    break
+    # if not matched_responses:
+    #     for resp_data in mock_keyword_responses:
+    #         for keyword in resp_data["keywords"]:
+    #             if keyword.lower() in user_content:
+    #                 matched_responses.append(resp_data)
+    #                 break
 
     final_response_content = default_mock_response_content
     prompts_for_user = []
     if not matched_responses:
         pass
     elif len(matched_responses) == 1:
-        final_response_content = matched_responses[0]["response_content"]
+        final_response_content = matched_responses[0]["operator"]
     else:
         final_response_content = "您可能想了解以下哪个问题？请选择或继续提问："
-        unique_prompts_map = {item['id']: item for item in matched_responses}
+        unique_prompts_map = {item['description']: item for item in matched_responses}
         prompts_for_user = [
-            {"key": item_id, "description": item_data["prompt_label"]}
+            {"key": item_id, "description": item_data["description"]}
             for item_id, item_data in unique_prompts_map.items()
         ]
     return final_response_content, prompts_for_user
@@ -118,7 +70,7 @@ async def save_message_history(key: str, message_data: dict, db: Session = Depen
     db.refresh(user_db_message)
     
     # 生成助手回复
-    assistant_content, prompts = generate_assistant_reply(user_content)
+    assistant_content, prompts = generate_assistant_reply(user_content, db)
     
     # 创建助手消息
     assistant_db_message = models.Message(
@@ -177,8 +129,8 @@ async def get_chats(orgCode: str, db: Session = Depends(get_db)):
     if not db_session:
         return []
     
-    # 获取会话中的所有聊天
-    db_chats = chat.getBySession(db, db_session.sessionId)
+    # 获取会话中的前5条聊天
+    db_chats = chat.getBySessionTop5(db, db_session.sessionId)
     
     # 获取当前日期以进行比较
     today = datetime.now().date()
