@@ -1,15 +1,26 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Depends, APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timedelta
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from fastapi import APIRouter
+from sqlalchemy.orm import Session
+
+from database.config import get_db, init_db
+import database.models as models
+from database.crud import org, session as session_crud, chat, message, hot_topic
+from database import schema
+from database.init_data import init_all_data
+
 from util import mask_sensitive
 from security import create_access_token
 
 
+
+
+# 创建路由器
 router = APIRouter(prefix="/api")
+
 
 sessions = [
     {
@@ -142,66 +153,190 @@ def generate_assistant_reply(user_content: str):
         ]
     return final_response_content, prompts_for_user
 
-@router.get("/sessions")
-async def get_sessions():
-    return sessions
+@router.get("/sessions/{orgCode}")
+async def get_sessions(orgCode: str, db: Session = Depends(get_db)):
+    # 获取机构对应的会话
+    db_session = session_crud.getByOrg(db, orgCode)
+    if not db_session:
+        return []
+    
+    # 获取会话中的所有聊天
+    db_chats = chat.getBySession(db, db_session.sessionId)
+    
+    # 获取当前日期以进行比较
+    today = datetime.now().date()
+    yesterday = today - timedelta(days=1)
+    
+    # 将数据库对象转换为前端所需格式，并根据日期分组
+    sessions_list = []
+    for db_chat in db_chats:
+        chat_date = db_chat.createdAt.date()
+        
+        # 根据日期确定分组
+        if chat_date == today:
+            group = "今天"
+        elif chat_date == yesterday:
+            group = "昨天"
+        else:
+            group = "更早"
+            
+        session_item = {
+            "key": db_chat.chatId,
+            "label": db_chat.title or db_chat.chatName,
+            "group": group
+        }
+        sessions_list.append(session_item)
+    
+    # 按照创建时间降序排序，使最新的聊天排在前面
+    sessions_list.sort(key=lambda x: next((c.createdAt for c in db_chats if c.chatId == x["key"])), reverse=True)
+    
+    return sessions_list
 
 @router.post("/sessions")
-async def create_session(data: dict):
-    session_id = f"session-{len(sessions)}-{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
-    session = {
-        "key": session_id,
-        "label": data.get("label", f"业务咨询 {len(sessions) + 1}"),
-        "group": "今天", # Or determine group dynamically
+async def create_session(data: dict, db: Session = Depends(get_db)):
+    orgCode = data.get("orgCode")
+    chatName = data.get("label", f"业务咨询")
+    
+    # 获取组织
+    db_org = org.getByOrgCode(db, orgCode)
+    if not db_org:
+        raise HTTPException(status_code=404, detail="机构不存在")
+    
+    # 检查组织是否已有会话
+    db_session = session_crud.getByOrg(db, orgCode)
+    
+    # 如果没有会话，创建新会话
+    if not db_session:
+        session_data = schema.SessionCreate(orgCode=orgCode)
+        db_session = session_crud.create(db, objIn=session_data)
+    
+    # 创建新的聊天
+    chat_data = schema.ChatCreate(
+        sessionId=db_session.sessionId,
+        chatName=chatName,
+        title=data.get("title")
+    )
+    db_chat = chat.create(db, objIn=chat_data)
+    
+    # 返回新创建的聊天信息
+    return {
+        "key": db_chat.chatId,
+        "label": db_chat.title or db_chat.chatName,
+        "group": "今天"
     }
-    mock_message_history[session["key"]] = []
-    sessions.insert(0, session) # Insert new sessions at the beginning
-    return session
 
 @router.delete("/sessions/{key}")
-async def delete_session(key: str):
-    global sessions # Ensure we are modifying the global list
-    original_len = len(sessions)
-    sessions = [s for s in sessions if s["key"] != key]
-    if key in mock_message_history:
-        del mock_message_history[key]
+async def delete_session(key: str, db: Session = Depends(get_db)):
+    # 获取聊天记录
+    db_chat = chat.getByChatId(db, key)
+    if not db_chat:
+        return {"message": "Chat not found or already deleted"}
     
-    if len(sessions) < original_len:
-        return {"message": "Session deleted successfully"}
-    else:
-        # Consider returning a 404 if the key was not found, though current behavior is to silently succeed.
-        return {"message": "Session not found or already deleted"}
+    # 删除聊天记录
+    chat.remove(db, id=db_chat.id)
+    
+    return {"message": "Chat deleted successfully"}
 
 
 @router.get("/hot_topics")
-async def get_hot_topics():
-    return mock_hot_topics
+async def get_hot_topics(db: Session = Depends(get_db)):
+    # 从数据库获取热门话题
+    db_hot_topics = hot_topic.getAllOrderedByOrder(db)
+    
+    # 如果数据库中没有热门话题，则返回模拟数据
+    if not db_hot_topics:
+        return mock_hot_topics
+    
+    # 转换为前端所需格式
+    topics = []
+    for topic in db_hot_topics:
+        topics.append({
+            "key": topic.topicId,
+            "description": topic.description,
+            "icon": topic.icon or ""
+        })
+    
+    return topics
 
 @router.get("/message_history/{key}")
-async def get_message_history(key: str):
-    # 返回完整历史，格式为[{id, role, content, custom_prompts?}, ...]
-    return mock_message_history.get(key, [])
+async def get_message_history(key: str, db: Session = Depends(get_db)):
+    # 获取聊天记录
+    db_chat = chat.getByChatId(db, key)
+    if not db_chat:
+        return []
+    
+    # 获取聊天的所有消息
+    db_messages = message.getByChat(db, key)
+    
+    # 转换为前端所需格式
+    message_history = []
+    for msg in db_messages:
+        message_item = {
+            "id": msg.messageId,
+            "role": msg.sender,
+            "content": msg.content,
+            "status": msg.status
+        }
+        message_history.append(message_item)
+    
+    return message_history
 
 @router.post("/message_history/{key}")
-async def save_message_history(key: str, message: dict):
-    user_msg = {
-        "id": f"msg_{int(datetime.now().timestamp()*1000)}",
+async def save_message_history(key: str, message_data: dict, db: Session = Depends(get_db)):
+    # 获取聊天记录
+    db_chat = chat.getByChatId(db, key)
+    if not db_chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    
+    # 创建用户消息
+    user_content = mask_sensitive(message_data.get("content", ""))
+    now = datetime.now()
+    user_message_data = {
+        "content": user_content,
         "role": "user",
-        "content": mask_sensitive(message.get("content", ""))
+        "status": "sent",
+        "id": f"msg_{int(now.timestamp()*1000)}"
     }
-    if key not in mock_message_history:
-        mock_message_history[key] = []
-    mock_message_history[key].append(user_msg)
-    # 生成assistant回复
-    final_response_content, prompts_for_user = generate_assistant_reply(message.get("content", ""))
+    
+    # 保存用户消息到数据库
+    user_db_message = models.Message(
+        chatId=key,
+        content=user_content,
+        sender="user",
+        status="sent",
+        timestamp=now
+    )
+    db.add(user_db_message)
+    db.commit()
+    db.refresh(user_db_message)
+    
+    # 生成助手回复
+    assistant_content, prompts = generate_assistant_reply(user_content)
+    
+    # 创建助手消息
+    assistant_db_message = models.Message(
+        chatId=key,
+        content=assistant_content,
+        sender="assistant",
+        status="received",
+        timestamp=datetime.now()
+    )
+    db.add(assistant_db_message)
+    db.commit()
+    db.refresh(assistant_db_message)
+    
+    # 转换为前端所需格式
     assistant_msg = {
-        "id": f"msg_{int(datetime.now().timestamp()*1000)+1}",
+        "id": assistant_db_message.messageId,
         "role": "assistant",
-        "content": final_response_content
+        "content": assistant_content,
+        "status": "received"
     }
-    if prompts_for_user:
-        assistant_msg["custom_prompts"] = prompts_for_user
-    mock_message_history[key].append(assistant_msg)
+    
+    # 如果有推荐问题，添加到响应中
+    if prompts:
+        assistant_msg["custom_prompts"] = prompts
+    
     return assistant_msg
 
 # 假设每个会话或用户有固定联系人
@@ -244,57 +379,61 @@ mock_users = [
 ]
 
 @router.post("/login")
-async def login(data: dict):
-    # 简单的登录验证，实际环境中应做更强的安全措施
-    org_code = data.get("orgCode")
+async def login(data: dict, db: Session = Depends(get_db)):
+    orgCode = data.get("orgCode")
     password = data.get("password")
     
-    # 查找用户
-    user = next((u for u in mock_users if u["orgCode"] == org_code), None)
-    if not user or user["password"] != password:
-        raise HTTPException(
-            status_code=401, 
-            detail="无效的机构号或密码"
-        )
+    # 从数据库中获取组织
+    db_org = org.getByOrgCode(db, orgCode)
+    if not db_org or db_org.password != password:
+        raise HTTPException(status_code=401, detail="机构号或密码错误")
     
-    # 生成token
-    access_token = create_access_token({"sub": org_code})
+    # 检查是否是第一次登录
+    isFirstLogin = db_org.isFirstLogin
     
-    # 返回登录信息
+    # 如果是第一次登录，更新状态
+    if isFirstLogin:
+        db_org.isFirstLogin = False
+        db.add(db_org)
+        db.commit()
+        db.refresh(db_org)
+    
+    # 返回登录信息（不需要修改isFirstLogin，因为前端需要知道这是第一次登录）
     return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": {
-            "orgCode": user["orgCode"],
-            "orgName": user["orgName"],
-            "userName": user["userName"],
-            "isFirstLogin": user["isFirstLogin"],
-            "lastPasswordChangeTime": user["lastPasswordChangeTime"]
-        }
+        "token": create_access_token(data={"sub": db_org.orgCode}),
+        "orgCode": db_org.orgCode,
+        "orgName": db_org.orgName,
+        "isFirstLogin": isFirstLogin,  # 返回登录前的状态，以便前端判断是否需要修改密码
+        "lastPasswordChangeTime": db_org.passwordLastChanged.isoformat()
     }
 
 @router.get("/org/{orgCode}")
-async def get_org_info(orgCode: str):
-    for user in mock_users:
-        if user["orgCode"] == orgCode:
-            return {
-                "orgName": user["orgName"],
-                "isFirstLogin": user["isFirstLogin"],
-                "lastPasswordChangeTime": user["lastPasswordChangeTime"]
-            }
-    raise HTTPException(status_code=404, detail="机构号不存在")
+async def get_org_info(orgCode: str, db: Session = Depends(get_db)):
+    db_org = org.getByOrgCode(db, orgCode)
+    if not db_org:
+        raise HTTPException(status_code=404, detail="机构号不存在")
+    
+    return {
+        "orgName": db_org.orgName,
+        "isFirstLogin": db_org.isFirstLogin,
+        "lastPasswordChangeTime": db_org.passwordLastChanged.isoformat()
+    }
 
 @router.post("/changePassword")
-async def change_password(data: dict):
+async def change_password(data: dict, db: Session = Depends(get_db)):
     orgCode = data.get("orgCode")
     oldPassword = data.get("oldPassword")
     newPassword = data.get("newPassword")
-    for user in mock_users:
-        if user["orgCode"] == orgCode and user["password"] == oldPassword:
-            user["password"] = newPassword
-            user["lastPasswordChangeTime"] = datetime.now().strftime("%Y-%m-%d")
-            return {"success": True}
-    raise HTTPException(status_code=401, detail="机构号、旧密码或新密码错误")
+    
+    # 验证旧密码
+    db_org = org.getByOrgCode(db, orgCode)
+    if not db_org or db_org.password != oldPassword:
+        raise HTTPException(status_code=401, detail="机构号或旧密码错误")
+    
+    # 更新密码
+    updated_org = org.changePassword(db, orgCode, newPassword)
+    
+    return {"success": True}
 
 if __name__ == "__main__":
     uvicorn.run("api:router", host="0.0.0.0", port=8000)

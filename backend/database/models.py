@@ -60,4 +60,14 @@ class Message(Base):
     timestamp = Column(DateTime, default=datetime.now)
 
     # 关系：一条消息属于一个对话
-    chat = relationship("Chat", back_populates="messages") 
+    chat = relationship("Chat", back_populates="messages")
+
+
+class HotTopic(Base):
+    __tablename__ = "hot_topics"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    topicId = Column(String, unique=True, index=True, default=lambda: str(uuid.uuid4()))
+    description = Column(String, nullable=False)
+    icon = Column(String, nullable=True)
+    order = Column(Integer, default=0)  # 排序字段 

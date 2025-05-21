@@ -1,12 +1,26 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from chat import QwenChatbot
 import uvicorn
 from admin_api import router as admin_router
 from api import router as api_router
+from database.config import get_db, init_db
+from database.config import get_db, init_db
+import database.models as models
+from database.crud import org, session as session_crud, chat, message, hot_topic
+from database import schema
+from database.init_data import init_all_data
 
 app = FastAPI()
+
+# 初始化数据库
+init_db()
+
+# 启动事件：初始化数据
+@app.on_event("startup")
+async def startup_event():
+    db = next(get_db())
+    init_all_data(db)
 
 # Configure CORS
 app.add_middleware(

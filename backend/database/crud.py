@@ -2,11 +2,11 @@ from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any, Type, TypeVar, Generic
 from pydantic import BaseModel
 
-from .models import Org, Session as SessionModel, Chat as ChatModel, Message as MessageModel
-from backend.beans.org import Org as OrgBean
-from backend.beans.session import Session as SessionBean
-from backend.beans.chat import Chat as ChatBean
-from backend.beans.message import Message as MessageBean
+from .models import Org, Session as SessionModel, Chat as ChatModel, Message as MessageModel, HotTopic as HotTopicModel
+from beans.org import Org as OrgBean
+from beans.session import Session as SessionBean
+from beans.chat import Chat as ChatBean
+from beans.message import Message as MessageBean
 
 # 定义泛型类型变量
 T = TypeVar('T')
@@ -177,8 +177,21 @@ class CRUDMessage(CRUDBase[MessageModel, CreateSchemaType]):
         )
 
 
+class CRUDHotTopic(CRUDBase[HotTopicModel, CreateSchemaType]):
+    """热门话题CRUD操作"""
+    
+    def getByTopicId(self, db: Session, topicId: str) -> Optional[HotTopicModel]:
+        """通过topicId获取热门话题"""
+        return db.query(self.model).filter(self.model.topicId == topicId).first()
+    
+    def getAllOrderedByOrder(self, db: Session) -> List[HotTopicModel]:
+        """获取所有热门话题，按order字段排序"""
+        return db.query(self.model).order_by(self.model.order).all()
+
+
 # 创建CRUD实例
 org = CRUDOrg(Org)
 session = CRUDSession(SessionModel)
 chat = CRUDChat(ChatModel)
-message = CRUDMessage(MessageModel) 
+message = CRUDMessage(MessageModel)
+hot_topic = CRUDHotTopic(HotTopicModel) 

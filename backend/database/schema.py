@@ -73,4 +73,21 @@ class SessionResponse(SessionBase):
     chats: List[ChatResponse] = []
 
     class Config:
+        orm_mode = True
+
+
+class HotTopicBase(BaseModel):
+    description: str
+    icon: Optional[str] = None
+    order: Optional[int] = 0
+
+
+class HotTopicCreate(HotTopicBase):
+    pass
+
+
+class HotTopicResponse(HotTopicBase):
+    topicId: str
+    
+    class Config:
         orm_mode = True 
