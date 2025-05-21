@@ -3,32 +3,10 @@ from typing import List, Optional
 from datetime import datetime
 
 
-
-class OrgBase(BaseModel):
-    orgCode: str
-    orgName: str
-
-
-class OrgCreate(OrgBase):
-    password: str
-
-
-class OrgResponse(OrgBase):
-    isFirstLogin: bool
-    passwordLastChanged: datetime
-    
-    class Config:
-        orm_mode = True
-
-
 class MessageBase(BaseModel):
     content: str
     sender: str
     status: str
-
-
-class MessageCreate(MessageBase):
-    pass
 
 
 class MessageResponse(MessageBase):
@@ -42,7 +20,6 @@ class MessageResponse(MessageBase):
 
 class ChatBase(BaseModel):
     chatName: str
-    title: Optional[str] = None
 
 
 class ChatCreate(ChatBase):
@@ -76,18 +53,17 @@ class SessionResponse(SessionBase):
         orm_mode = True
 
 
-class HotTopicBase(BaseModel):
-    description: str
-    icon: Optional[str] = None
-    order: Optional[int] = 0
+class SurveyBase(BaseModel):
+    chatId: str
+    solved: str
+    comment: str
 
-
-class HotTopicCreate(HotTopicBase):
+class SurveyCreate(SurveyBase):
     pass
 
+class SurveyResponse(SurveyBase):
+    surveyId: str
+    createdAt: datetime
 
-class HotTopicResponse(HotTopicBase):
-    topicId: str
-    
     class Config:
-        orm_mode = True 
+        orm_mode = True

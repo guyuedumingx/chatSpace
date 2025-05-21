@@ -7,9 +7,7 @@ from pydantic import BaseModel
 
 from database.config import get_db
 from database.crud import org, session as session_crud, chat, message
-from database import schema
 from database.models import Topic
-from search import search_topics
 
 
 # 创建路由器
@@ -43,28 +41,6 @@ async def get_org_info(orgCode: str, db: Session = Depends(get_db)):
         "isFirstLogin": db_org.isFirstLogin,
         "lastPasswordChangeTime": db_org.passwordLastChanged.isoformat()
     }
-
-class SearchResponse(BaseModel):
-    results: List[Dict[str, Any]]
-    total: int
-
-@router.get("/search", response_model=SearchResponse)
-async def search(
-    q: str = Query(..., description="搜索关键词"),
-    limit: int = Query(10, description="返回结果数量上限"),
-    db: Session = Depends(get_db)
-):
-    """
-    全文搜索Topic
-    
-    - **q**: 搜索关键词
-    - **limit**: 返回结果数量上限
-    """
-    results = search_topics(q, limit)
-    return SearchResponse(
-        results=results,
-        total=len(results)
-    )
 
 if __name__ == "__main__":
     uvicorn.run("api:router", host="0.0.0.0", port=8000)
