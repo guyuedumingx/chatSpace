@@ -12,6 +12,9 @@ class Org(Base):
     id = Column(Integer, primary_key=True, index=True)
     orgCode = Column(String, unique=True, index=True)
     orgName = Column(String, nullable=False)
+    contactName = Column(String, nullable=True, default="")
+    contactPhone = Column(String, nullable=True, default="")
+    contactEhr = Column(String, nullable=True, default="")
     password = Column(String, nullable=False)  # 实际应存储加密后的密码
     isFirstLogin = Column(Boolean, default=True)
     passwordLastChanged = Column(DateTime, default=datetime.now)

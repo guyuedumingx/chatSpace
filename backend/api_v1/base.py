@@ -39,6 +39,9 @@ async def get_org_info(orgCode: str, db: Session = Depends(get_db)):
     return {
         "orgName": db_org.orgName,
         "isFirstLogin": db_org.isFirstLogin,
+        "contactName": db_org.contactName,
+        "contactPhone": db_org.contactPhone,
+        "contactEhr": db_org.contactEhr,
         "lastPasswordChangeTime": db_org.passwordLastChanged.isoformat()
     }
 
