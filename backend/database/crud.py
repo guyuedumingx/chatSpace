@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any, Type, TypeVar, Generic
 from pydantic import BaseModel
 from datetime import datetime
-from .models import Org, Session as SessionModel, Chat as ChatModel, Message as MessageModel, Topic as TopicModel, Survey as SurveyModel
+from .models import Org, Session as SessionModel, Chat as ChatModel, Message as MessageModel, Topic as TopicModel, Survey as SurveyModel, Contact as ContactModel
 
 # 定义泛型类型变量
 T = TypeVar('T')
@@ -153,6 +153,13 @@ class CRUDSurvey(CRUDBase[SurveyModel, CreateSchemaType]):
         """获取对话的最新调查"""
         return db.query(self.model).filter(self.model.chatId == chatId).order_by(self.model.createdAt.desc()).limit(1).all()
 
+class CRUDContact(CRUDBase[ContactModel, CreateSchemaType]):
+
+    def getAllContact(self, db: Session) -> List[ContactModel]:
+        """获取所有联系人"""
+        return db.query(self.model).all()
+
+
 # 创建CRUD实例
 org = CRUDOrg(Org)
 session = CRUDSession(SessionModel)
@@ -160,3 +167,4 @@ chat = CRUDChat(ChatModel)
 message = CRUDMessage(MessageModel)
 topic = CRUDTopic(TopicModel)
 survey = CRUDSurvey(SurveyModel)
+contact = CRUDContact(ContactModel)

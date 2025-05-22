@@ -237,7 +237,7 @@ const Login: React.FC = () => {
                     name="contactEhr"
                     rules={[
                       { required: true, message: '请输入EHR号' },
-                      { pattern: /^\d+$/, message: 'EHR号只能输入数字' }
+                      { pattern: /^\d{7}$/, message: 'EHR号只能输入7位数字' }
                     ]}
                   >
                     <Input

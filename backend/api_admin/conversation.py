@@ -4,10 +4,10 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 import random
 from sqlalchemy.orm import Session
-
 from database.config import get_db
 from database.models import Topic, Org, Chat, Message, Session
 from security import verify_token
+from database.crud import session as session_crud
 
 router = APIRouter()
 
@@ -187,6 +187,7 @@ async def get_conversations(
     # 在实际应用中，应该从数据库获取数据
     # 这里使用模拟数据
     conversations = get_mock_conversations()
+    org = session_crud.getByOrg(db, current_user.org_id)
     
     # 应用筛选条件
     filtered_convs = conversations

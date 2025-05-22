@@ -95,8 +95,17 @@ class Survey(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     surveyId = Column(String, unique=True, index=True, default=lambda: str(uuid.uuid4()))
-    surveyName = Column(String, nullable=False)
     createdAt = Column(DateTime, default=datetime.now)
     solved = Column(String, nullable=False)
     comment = Column(String, nullable=True)
     chatId = Column(String, ForeignKey("chats.chatId"))
+
+
+class Contact(Base):
+    __tablename__ = "contacts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    contactName = Column(String, nullable=False)
+    contactPhone = Column(String, nullable=False)
+    createdAt = Column(DateTime, default=datetime.now)
+
