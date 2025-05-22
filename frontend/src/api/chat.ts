@@ -38,6 +38,7 @@ export interface BackendMessageItem {
 export interface ContactInfo {
   contactName: string;
   contactPhone: string;
+  order: number;
 }
 
 export interface SurveyData {

@@ -116,6 +116,9 @@ const Conversations: React.FC = () => {
       dataIndex: 'time',
       key: 'time',
       width: 150,
+      render: (text: string, record: ConversationData) => (
+        <span>{dayjs(text).format('YYYY-MM-DD HH:mm:ss')}</span>
+      ),
     },
     {
       title: '机构号',
@@ -123,17 +126,17 @@ const Conversations: React.FC = () => {
       key: 'branchId',
       width: 120,
     },
+    // {
+    //   title: '一级分行',
+    //   dataIndex: 'branchName',
+    //   key: 'branchName',
+    //   width: 150,
+    //   render: (text: string, record: ConversationData) => (
+    //     <a onClick={() => navigate(`/branches?id=${record.branchId}`)}>{text}</a>
+    //   ),
+    // },
     {
-      title: '一级分行',
-      dataIndex: 'branchName',
-      key: 'branchName',
-      width: 150,
-      render: (text: string, record: ConversationData) => (
-        <a onClick={() => navigate(`/branches?id=${record.branchId}`)}>{text}</a>
-      ),
-    },
-    {
-      title: '网点',
+      title: '网点名称',
       dataIndex: 'subBranchName',
       key: 'subBranchName',
       width: 150,
@@ -156,24 +159,11 @@ const Conversations: React.FC = () => {
       dataIndex: 'satisfaction',
       key: 'satisfaction',
       width: 100,
-      render: (satisfaction: ConversationData['satisfaction'] | undefined, record: ConversationData) => {
-        if (!satisfaction) {
-          return (
-            <Badge 
-              status="success" 
-              text={
-                <a onClick={() => showUnevaluatedDetail(record)}>
-                  已解决
-                </a>
-              } 
-            />
-          );
-        }
-        
+      render: (satisfaction: ConversationData['satisfaction'] | undefined) => {
         return (
           <Badge 
-            status={satisfaction.solved === 'yes' ? 'success' : 'error'} 
-            text={satisfaction.solved === 'yes' ? '已解决' : '未解决'}
+            status={satisfaction?.solved === 'yes' ? 'success' : 'error'} 
+            text={satisfaction?.solved === 'yes' ? '已解决' : '未解决'}
           />
         );
       },
@@ -240,25 +230,20 @@ const Conversations: React.FC = () => {
     });
   };
 
-  // 未评价对话详情
-  const showUnevaluatedDetail = (record: ConversationData) => {
-    showConversationDetail(record.id);
-  };
-
   return (
     <div>
       <h2>对话记录</h2>
       
       <Card bordered={false}>
         <Space style={{ marginBottom: 16 }} wrap>
-          <Select
+          {/* <Select
             placeholder="选择分行"
             style={{ width: 150 }}
             value={selectedBranch}
             onChange={handleBranchChange}
             options={branchOptions}
             allowClear
-          />
+          /> */}
           
           <Input
             placeholder="机构号"
@@ -353,7 +338,7 @@ const Conversations: React.FC = () => {
             <Row gutter={[16, 16]}>
               <Col span={8}>
                 <span style={{ fontWeight: 'bold' }}><ClockCircleOutlined /> 时间：</span>
-                {currentConversation.time}
+                {dayjs(currentConversation.time).format('YYYY-MM-DD HH:mm:ss')}
               </Col>
               <Col span={8}>
                 <span style={{ fontWeight: 'bold' }}><ShopOutlined /> 一级分行：</span>
@@ -389,6 +374,13 @@ const Conversations: React.FC = () => {
                     }}
                   >
                     <div>{message.content}</div>
+                    {message.prompts && (
+                      <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
+                        {message.prompts.map((prompt, index) => (
+                          <div key={prompt.description}>{index + 1}. {prompt.description}</div>
+                        ))}
+                      </div>
+                    )}
                     <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
                       {message.timestamp}
                     </div>
@@ -405,7 +397,7 @@ const Conversations: React.FC = () => {
                     {currentSurvey.solved === 'yes' ? '已解决问题' : '未解决问题'}
                   </Tag>
                   <span style={{ fontSize: 12, color: '#999', marginLeft: 8 }}>
-                    {currentSurvey.timestamp}
+                    {dayjs(currentSurvey.timestamp).format('YYYY-MM-DD HH:mm:ss')}
                   </span>
                 </div>
                 

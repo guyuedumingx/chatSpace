@@ -60,6 +60,7 @@ class Message(Base):
     messageId = Column(String, unique=True, index=True, default=lambda: str(uuid.uuid4()))
     chatId = Column(String, ForeignKey("chats.chatId"))
     content = Column(Text, nullable=False)
+    prompts = Column(Text, nullable=True)
     sender = Column(String, nullable=False)
     status = Column(String, nullable=False)
     timestamp = Column(DateTime, default=datetime.now)
@@ -112,5 +113,6 @@ class Contact(Base):
     id = Column(Integer, primary_key=True, index=True)
     contactName = Column(String, nullable=False)
     contactPhone = Column(String, nullable=False)
+    order = Column(Integer, nullable=False)
     createdAt = Column(DateTime, default=datetime.now)
 

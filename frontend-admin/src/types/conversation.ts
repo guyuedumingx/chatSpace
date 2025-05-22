@@ -20,6 +20,9 @@ export interface ConversationData {
     id: string;
     role: 'user' | 'assistant';
     content: string;
+    prompts?: {
+      description: string;
+    }[];
     timestamp: string;
   }
   

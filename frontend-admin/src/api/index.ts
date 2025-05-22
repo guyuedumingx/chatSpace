@@ -92,16 +92,6 @@ export const getConversationDetail = (id: string) => {
   return axios.get(`/admin/conversations/${id}`);
 };
 
-// 获取满意度调查数据
-export const getSurveysData = (params?: Partial<PaginationParams>) => {
-  return axios.get('/admin/surveys', { params });
-};
-
-// 获取满意度调查详情
-export const getSurveyDetail = (id: string) => {
-  return axios.get(`/admin/surveys/${id}`);
-};
-
 // 导出数据
 export const exportData = (type: string, params?: Partial<PaginationParams>) => {
   return axios.get(`/admin/export/${type}`, {

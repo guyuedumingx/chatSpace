@@ -77,21 +77,24 @@ const Dashboard: React.FC = () => {
   // 表格列定义
   const columns = [
     {
+      title: '序号',
+      dataIndex: 'index',
+      key: 'index',
+      width: '20%',
+      render: (text: string, record: TopBranch, index: number) => (
+        <span>{index + 1}</span>
+      ),
+    },
+    {
       title: '分支机构',
-      dataIndex: 'orgName',
-      key: 'orgName',
+      dataIndex: 'orgCode',
+      key: 'orgCode',
+      width: '40%',
     },
     {
       title: '对话数量',
       dataIndex: 'count',
       key: 'count',
-    },
-    {
-      title: '操作',
-      key: 'action',
-      render: (_: unknown, record: TopBranch) => (
-        <a href={`/branches/${record.orgCode}`}>详情</a>
-      ),
     }
   ];
 
@@ -145,10 +148,9 @@ const Dashboard: React.FC = () => {
             <Col xs={24} sm={12} lg={6}>
               <Card bordered={false}>
                 <Statistic
-                  title="平均满意度"
-                  value={(data.avgSatisfactionRate * 100).toFixed(1)}
+                  title="问题库数目"
+                  value={data.topics}
                   prefix={<CheckCircleOutlined />}
-                  suffix="%"
                 />
               </Card>
             </Col>
