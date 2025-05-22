@@ -4,7 +4,7 @@ import uvicorn
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
 from pydantic import BaseModel
-
+from security import verify_token
 from database.config import get_db
 from database.crud import org, session as session_crud, chat, message
 from database.models import Topic
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api")
 
 
 @router.get("/hot_topics")
-async def get_hot_topics(db: Session = Depends(get_db)):
+async def get_hot_topics(db: Session = Depends(get_db), current_org = Depends(verify_token)):
     # 从数据库获取热门话题
     db_hot_topics = db.query(Topic).filter(Topic.isDeleted == False).order_by(Topic.order).limit(5).all()
     

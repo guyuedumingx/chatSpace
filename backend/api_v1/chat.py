@@ -7,6 +7,7 @@ from util import mask_sensitive
 from sqlalchemy.orm import Session
 from database.crud import topic as topic_crud
 from search import search_topics
+from security import verify_token
 
 router = APIRouter()
 
@@ -47,7 +48,7 @@ def generate_assistant_reply(user_content: str, db: Session):
 
 
 @router.post("/api/message_history/{key}")
-async def save_message_history(key: str, message_data: dict, db: Session = Depends(get_db)):
+async def save_message_history(key: str, message_data: dict, db: Session = Depends(get_db), current_org = Depends(verify_token)):
     # 获取聊天记录
     db_chat = chat.getByChatId(db, key)
     if not db_chat:
@@ -103,7 +104,7 @@ async def save_message_history(key: str, message_data: dict, db: Session = Depen
 
 
 @router.get("/api/message_history/{key}")
-async def get_message_history(key: str, db: Session = Depends(get_db)):
+async def get_message_history(key: str, db: Session = Depends(get_db), current_org = Depends(verify_token)):
     # 获取聊天记录
     db_chat = chat.getByChatId(db, key)
     if not db_chat:
@@ -126,7 +127,7 @@ async def get_message_history(key: str, db: Session = Depends(get_db)):
     return message_history
 
 @router.get("/api/chat/{orgCode}")
-async def get_chats(orgCode: str, db: Session = Depends(get_db)):
+async def get_chats(orgCode: str, db: Session = Depends(get_db), current_org = Depends(verify_token)):
     # 获取机构对应的会话
     db_session = session_crud.getByOrg(db, orgCode)
     if not db_session:
@@ -165,7 +166,7 @@ async def get_chats(orgCode: str, db: Session = Depends(get_db)):
     return sessions_list
 
 @router.post("/api/chat")
-async def create_chat(data: dict, db: Session = Depends(get_db)):
+async def create_chat(data: dict, db: Session = Depends(get_db), current_org = Depends(verify_token)):
     orgCode = data.get("orgCode")
     chatName = data.get("label", f"业务咨询")
     
@@ -197,7 +198,7 @@ async def create_chat(data: dict, db: Session = Depends(get_db)):
     }
 
 @router.delete("/api/chat/{key}")
-async def delete_chat(key: str, db: Session = Depends(get_db)):
+async def delete_chat(key: str, db: Session = Depends(get_db), current_org = Depends(verify_token)):
     # 获取聊天记录
     db_chat = chat.getByChatId(db, key)
     if not db_chat:
