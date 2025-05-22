@@ -304,7 +304,7 @@ const QuestionBank: React.FC = () => {
   return (
     <div>
       {contextHolder}
-      <Title level={2}>问题库管理</Title>
+      <h2>问题库管理</h2>
       
       <Card bordered={false}>
         <Space style={{ marginBottom: 16 }} wrap>

@@ -127,6 +127,12 @@ const Login: React.FC = () => {
       }
     } catch (error: any) {
       messageApi.error('登录失败，请检查机构号、密码是否正确');
+      form.setFields([
+        {
+          name: 'password',
+          errors: ['密码错误']
+        }
+      ]);
     } finally {
       setLoading(false);
     }
@@ -173,8 +179,8 @@ const Login: React.FC = () => {
 
   return (
     <div className="login-container">
-      {contextHolder}
       <Row className="login-row">
+        {contextHolder}
         <Col flex="55%" className="login-left">
           <div className="bank-building-container">
             <img src={bankBuilding} alt="中国银行大楼" className="bank-building-image" />

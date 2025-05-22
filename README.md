@@ -54,3 +54,9 @@ The frontend will run on http://localhost:5173
 - POST /api/chat
   - Request body: `{ "message": "your message" }`
   - Response: `{ "response": "AI response" }` 
+
+## TODO
+
+- [ ] 客户端登录界面密码错误无法正常弹出提示  
+- [ ] 客户端后端脱密掩码中的公司名，地址未实现  
+- [ ] 客户端后端脱密掩码中的姓名实现有错误 
