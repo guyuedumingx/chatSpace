@@ -73,6 +73,10 @@ class CRUDBase(Generic[ModelType, CreateSchemaType]):
 class CRUDOrg(CRUDBase[Org, CreateSchemaType]):
     """组织CRUD操作"""
     
+    def get_org_list(self, db: Session, limit: int = 100, skip: int = 0) -> List[Org]:
+        """获取组织列表，带分页功能"""
+        return db.query(self.model).offset(skip).limit(limit).all()
+    
     def getByOrgCode(self, db: Session, orgCode: str) -> Optional[Org]:
         """通过orgCode获取组织"""
         return db.query(self.model).filter(self.model.orgCode == orgCode).first()

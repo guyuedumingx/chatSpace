@@ -67,3 +67,27 @@ class SurveyResponse(SurveyBase):
 
     class Config:
         orm_mode = True
+
+class OrgBase(BaseModel):
+    orgCode: str
+    orgName: str
+    orgPhone: str
+    contactPhone: str
+    contactName: str
+    contactEhr: str
+
+class OrgCreate(OrgBase):
+    pass
+
+class OrgResponse(OrgBase):
+    orgId: str
+    passwordLastChanged: datetime
+    isFirstLogin: bool
+
+class OrgUpdate(BaseModel):
+    orgCode: str
+    orgName: Optional[str] = None
+    password: Optional[str] = None
+    
+    class Config:
+        orm_mode = True

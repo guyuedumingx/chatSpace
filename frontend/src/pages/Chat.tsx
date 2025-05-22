@@ -45,6 +45,7 @@ interface HotTopicItem {
 interface MessageChunk {
   choices?: Array<{
     message?: {
+      additional_prompt: any;
       role?: string;
       content?: string;
       custom_prompts?: Array<{
@@ -103,8 +104,11 @@ const Chat: React.FC = () => {
   // 发送消息时重置3分钟定时器
   const resetSurveyTimer = () => {
     if (surveyTimer.current) clearTimeout(surveyTimer.current);
-    surveyTimer.current = setTimeout(() => {
-      handleShowSurvey();
+    surveyTimer.current = setTimeout(async () => {
+      const exist = await chatApi.checkSurvey(curConversation);
+      if (!exist) {
+        handleShowSurvey();
+      }
     }, 3 * 60 * 1000);
   };
 
@@ -147,16 +151,15 @@ const Chat: React.FC = () => {
         if (chunk) {
           // 使用类型断言处理数据
           const messageChunk = chunk as unknown as MessageChunk;
-          
           // 从choices[0].message中获取内容和自定义提示
           const assistantMessage = messageChunk.choices?.[0]?.message || {};
           const content = assistantMessage.content || '';
           const customPrompts = assistantMessage.custom_prompts;
-          
           // 返回格式化的消息对象
           return {
             role: 'assistant',
             content: content || '无回答',
+            additional_prompt: assistantMessage.additional_prompt,
             ...(customPrompts ? { custom_prompts: customPrompts } : {})
           } as ExtendedBubbleDataType;
         }
@@ -186,6 +189,7 @@ const Chat: React.FC = () => {
       message: {
         role: item.role || 'unknown',
         content: item.content || '',
+        additional_prompt: item.additional_prompt || '',
         ...(item.custom_prompts ? { custom_prompts: item.custom_prompts } : {})
       } as ExtendedBubbleDataType,
       status: 'success',
@@ -263,7 +267,6 @@ const Chat: React.FC = () => {
     // 2. 发送到后端，获取assistant回复
     try {
       const assistantMsg = await chatApi.sendMessageToHistory(curConversation, val);
-      console.log(assistantMsg)
       // 3. 更新用户消息为success，追加assistant消息
       setMessages(prev => {
         // 把最后一条用户消息的status设为success
@@ -278,6 +281,7 @@ const Chat: React.FC = () => {
             message: {
               role: 'assistant',
               content: assistantMsg.content,
+              additional_prompt: assistantMsg.additional_prompt,
               ...(assistantMsg.custom_prompts ? { custom_prompts: assistantMsg.custom_prompts } : {})
             },
             status: 'success'
@@ -302,8 +306,13 @@ const Chat: React.FC = () => {
   // 结束对话按钮点击或超时弹窗
   const handleShowSurvey = async () => {
     if (!curConversation) return;
+    const exist = await chatApi.checkSurvey(curConversation);
+    console.log(exist)
+    if (exist) {
+      messageApi.error('您已提交过满意度调查，感谢您的反馈！');
+      return;
+    }
     const info = await chatApi.getContactInfo(curConversation);
-    console.log(info)
     setContactInfo(info);
     setSurveyVisible(true);
   };

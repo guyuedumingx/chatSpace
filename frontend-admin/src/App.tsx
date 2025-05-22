@@ -8,7 +8,7 @@ import AdminLayout from './layouts/AdminLayout';
 
 // 页面组件
 import Dashboard from './pages/Dashboard';
-import Branches from './pages/Branches';
+import Branches from './pages/Organization';
 import Conversations from './pages/Conversations';
 import Login from './pages/Login';
 import QuestionBank from './pages/QuestionBank';

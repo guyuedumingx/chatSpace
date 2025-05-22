@@ -32,7 +32,7 @@ const getMenuItems = (): MenuItem[] => [
   {
     key: '/branches',
     icon: <TeamOutlined />,
-    label: '网点统计',
+    label: '机构管理',
   },
   {
     key: '/conversations',

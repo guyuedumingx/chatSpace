@@ -72,14 +72,25 @@ export const getDashboardData = () => {
   return axios.get('/admin/dashboard');
 };
 
-// 获取所有机构数据
-export const getBranchesData = (params?: Partial<PaginationParams>) => {
-  return axios.get('/admin/branches', { params });
+// 获取网点列表
+export const getBranchesData = async (params: Partial<PaginationParams>) => {
+  const response = await axios.get('/admin/org/list', { params });
+  return response;
 };
 
-// 获取机构详情
+// 获取网点详情
 export const getBranchDetail = (orgCode: string) => {
-  return axios.get(`/admin/branches/${orgCode}`);
+  return axios.get(`/admin/org/detail/${orgCode}`);
+};
+
+// 更新网点信息
+export const updateBranch = (orgCode: string, data: Partial<{orgName: string, password: string}>) => {
+  return axios.put('/admin/org/update', { orgCode, ...data });
+};
+
+// 重置密码
+export const resetPassword = (orgCode: string, password: string) => {
+  return axios.post('/admin/org/reset-password', { orgCode, password });
 };
 
 // 获取对话记录列表

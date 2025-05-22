@@ -124,7 +124,7 @@ async def get_conversation_detail(
         "subBranchName": chat.session.organization.orgName,
         "topic": chat.chatName,
         "satisfaction": {
-            "solved": chat.survey.solved if chat.survey else 'yes',
+            "solved": chat.survey.solved if chat.survey else None,
             "comment": chat.survey.comment if chat.survey else '',
             "timestamp": str(chat.survey.createdAt) if chat.survey else str(chat.createdAt)
         },

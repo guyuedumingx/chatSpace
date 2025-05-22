@@ -33,15 +33,17 @@ def generate_assistant_reply(user_content: str, db: Session):
     #                 break
 
     final_response_content = default_mock_response_content
+    additional_prompts = ""
     prompts = []
     if not matched_responses:
         pass
     elif len(matched_responses) == 1:
         final_response_content = matched_responses[0]["operator"]
+        additional_prompts = matched_responses[0]["addition"]
     else:
         final_response_content = "您可能想了解以下哪个问题？请选择或继续提问："
         prompts = [{"description": item["description"]} for item in matched_responses]
-    return final_response_content, prompts
+    return final_response_content, additional_prompts, prompts
 
 
 @router.post("/api/message_history/{key}")
@@ -71,13 +73,14 @@ async def save_message_history(key: str, message_data: dict, db: Session = Depen
     db.refresh(user_db_message)
     
     # 生成助手回复
-    assistant_content, prompts = generate_assistant_reply(user_content, db)
+    assistant_content, additional_prompt, prompts = generate_assistant_reply(user_content, db)
     
     # 创建助手消息
     assistant_db_message = models.Message(
         chatId=key,
         content=assistant_content,
         prompts=json.dumps(prompts, ensure_ascii=False),
+        additional_prompt=additional_prompt,
         sender="assistant",
         status="received",
         timestamp=datetime.now()
@@ -97,6 +100,8 @@ async def save_message_history(key: str, message_data: dict, db: Session = Depen
     # 如果有推荐问题，添加到响应中
     if prompts:
         assistant_msg["custom_prompts"] = prompts
+    if additional_prompt:
+        assistant_msg["additional_prompt"] = additional_prompt
     
     return assistant_msg
 
@@ -118,6 +123,7 @@ async def get_message_history(key: str, db: Session = Depends(get_db), current_o
             "id": msg.messageId,
             "role": msg.sender,
             "content": msg.content,
+            "additional_prompt": msg.additional_prompt,
             "custom_prompts": json.loads(msg.prompts) if msg.prompts else None,
             "status": msg.status
         }

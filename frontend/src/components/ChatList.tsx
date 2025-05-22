@@ -15,6 +15,7 @@ import bot from '@/assets/bot.svg';
 interface ExtendedBubbleDataType extends BubbleDataType {
   role: string; // 确保role是必需的
   content: string; // 确保content是必需的，且是字符串类型
+  additional_prompt?: string;
   custom_prompts?: Array<{
     description: string;
   }>;
@@ -135,7 +136,7 @@ const ChatList: React.FC<ChatListProps> = ({
             const hasCustomPrompts = 
               msgInfo.message.custom_prompts && 
               msgInfo.message.custom_prompts.length > 0;
-            
+            const hasAdditionalPrompt = msgInfo.message.additional_prompt && msgInfo.message.additional_prompt.length > 0;
             // 确保content转换为字符串，防止为空
             const contentStr = String(msgInfo.message.content || '');
             
@@ -146,6 +147,13 @@ const ChatList: React.FC<ChatListProps> = ({
                 <div>
                   <div>{contentStr}</div>
                   {renderCustomPrompts(msgInfo.message)}
+                </div>
+              ) : hasAdditionalPrompt ? (
+                <div>
+                  <div>{contentStr}</div>
+                    <div style={{ fontSize: 10, color: '#000000a6', marginTop: 5 }}>
+                      {msgInfo.message.additional_prompt}
+                    </div>
                 </div>
               ) : contentStr,
               classNames: {

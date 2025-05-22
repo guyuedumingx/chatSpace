@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Table, DatePicker, Button, Space, Tag, Select, Input, Modal, Row, Col, Divider, Badge, Tooltip } from 'antd';
-import { SearchOutlined, ClockCircleOutlined, InfoCircleOutlined, ShopOutlined, FileTextOutlined } from '@ant-design/icons';
+import { SearchOutlined, ClockCircleOutlined, InfoCircleOutlined, ShopOutlined, FileTextOutlined, MessageOutlined } from '@ant-design/icons';
 import type { RangePickerProps } from 'antd/es/date-picker';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
@@ -311,14 +311,6 @@ const Conversations: React.FC = () => {
         title={
           <div>
             <span>对话详情</span>
-            {currentSurvey && (
-              <Tag 
-                color={currentSurvey.solved === 'yes' ? 'success' : 'error'}
-                style={{ marginLeft: 8 }}
-              >
-                {currentSurvey.solved === 'yes' ? '已解决' : '未解决'}
-              </Tag>
-            )}
           </div>
         }
         open={isModalVisible}
@@ -326,9 +318,6 @@ const Conversations: React.FC = () => {
         footer={[
           <Button key="close" onClick={() => setIsModalVisible(false)}>
             关闭
-          </Button>,
-          <Button key="export" type="primary">
-            导出对话
           </Button>,
         ]}
         width={800}
@@ -340,10 +329,16 @@ const Conversations: React.FC = () => {
                 <span style={{ fontWeight: 'bold' }}><ClockCircleOutlined /> 时间：</span>
                 {dayjs(currentConversation.time).format('YYYY-MM-DD HH:mm:ss')}
               </Col>
-              <Col span={8}>
+              {/* <Col span={8}>
                 <span style={{ fontWeight: 'bold' }}><ShopOutlined /> 一级分行：</span>
                 <a onClick={() => navigate(`/branches?id=${currentConversation.branchId}`)}>
                   {currentConversation.branchName}
+                </a>
+              </Col> */}
+              <Col span={8}>
+                <span style={{ fontWeight: 'bold' }}><MessageOutlined /> 消息数：</span>
+                <a>
+                  {currentMessages.length}
                 </a>
               </Col>
               <Col span={8}>
@@ -394,7 +389,7 @@ const Conversations: React.FC = () => {
                 <div>
                   <span style={{ fontWeight: 'bold' }}><FileTextOutlined /> 满意度反馈：</span>
                   <Tag color={currentSurvey.solved === 'yes' ? 'success' : 'error'}>
-                    {currentSurvey.solved === 'yes' ? '已解决问题' : '未解决问题'}
+                    {currentSurvey.solved === 'yes' ? '已解决问题' : currentSurvey.solved === 'no' ? '未解决问题' : '未反馈'}
                   </Tag>
                   <span style={{ fontSize: 12, color: '#999', marginLeft: 8 }}>
                     {dayjs(currentSurvey.timestamp).format('YYYY-MM-DD HH:mm:ss')}

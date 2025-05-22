@@ -29,6 +29,7 @@ export interface BackendMessageItem {
   id: string;
   role: string;
   content: string;
+  additional_prompt?: string;
   custom_prompts?: Array<{
     key: string;
     description: string;
@@ -105,6 +106,12 @@ export const chatApi = {
   // 提交满意度调查
   submitSurvey: async (data: SurveyData) => {
     const response = await axios.post(`${API_BASE_URL}/survey`, data);
+    return response.data;
+  },
+
+  // 检查满意度调查是否存在
+  checkSurvey: async (chatId: string) => {
+    const response = await axios.get(`${API_BASE_URL}/survey/exist?chatId=${chatId}`);
     return response.data;
   },
 };

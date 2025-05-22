@@ -61,6 +61,7 @@ class Message(Base):
     chatId = Column(String, ForeignKey("chats.chatId"))
     content = Column(Text, nullable=False)
     prompts = Column(Text, nullable=True)
+    additional_prompt = Column(Text, nullable=True)
     sender = Column(String, nullable=False)
     status = Column(String, nullable=False)
     timestamp = Column(DateTime, default=datetime.now)

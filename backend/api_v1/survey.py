@@ -13,7 +13,6 @@ router = APIRouter()
 async def submit_survey(data: dict, db: Session = Depends(get_db), current_org = Depends(verify_token)):
     # data: {solved: 'yes'|'no', comment: str, session_key: str, user_id: str (可选)}
     # 这里可以保存到数据库或日志，这里只打印
-    print("收到满意度调查：", data)
     survey_data = schema.SurveyCreate(
         chatId=data["chat_id"],
         solved=data["solved"],
@@ -24,6 +23,11 @@ async def submit_survey(data: dict, db: Session = Depends(get_db), current_org =
     db.commit()
     db.refresh(survey)
     return {"success": True}
+
+@router.get("/api/survey/exist")
+async def exist_survey(chatId: str, db: Session = Depends(get_db), current_org = Depends(verify_token)):
+    survey = survey_crud.getByChatId(db, chatId)
+    return len(survey) > 0
 
 @router.get("/api/survey/{chatId}")
 async def get_survey(chatId: str, db: Session = Depends(get_db), current_org = Depends(verify_token)):
