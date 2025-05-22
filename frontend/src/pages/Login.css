@@ -173,15 +173,6 @@
   border-radius: 4px;
 }
 
-.ant-input-affix-wrapper:hover {
-  border-color: #40a9ff;
-}
-
-.ant-input-affix-wrapper-focused {
-  border-color: #40a9ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
-}
-
 .ant-form-item-has-error .ant-input-affix-wrapper {
   border-color: #ff4d4f;
 }

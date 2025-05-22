@@ -1,7 +1,7 @@
 from security import get_password_hash
 from sqlalchemy.orm import Session
 from datetime import datetime
-from .models import Org, Topic
+from .models import Org, Topic, Contact
 
 def init_org_data(db: Session):
     """初始化组织数据"""
@@ -46,7 +46,7 @@ def init_hot_topics(db: Session):
             inTrcd="021076",
             trcd="021076",
             topicType="交易画面录入",
-            operator="情况一：常规录入\n将护照首页登记的姓名录入为英文名称，如有空格，按护照录入\n情况二：护照录入\n将护照首页登记的姓名录入为英文名称，如有空格，按护照录入\n情况三：护照录入\n将护照首页登记的姓名录入为英文名称，如有空格，按护照录入\n情况四：护照录入\n将护照首页登记的姓名录入为英文名称，如有空格，按护照录入\n情况五：护照录入\n将护照首页登记的姓名录入为英文名称，如有空格，按护照录入\n情况六：护照录入\n将护照首页登记的姓名录入为英文名称，如有空格，按护照录入\n情况七：护照录入\n将护照首页登记的姓名录入为英文名称，如有空格，按护照录入\n情况八：护照录入\n将护照首页登记的姓名录入为英文名称，如有空格，按护照录入\n情况九：护照录入\n将护照首页登记的姓名录入为英文名称，如有空格，按护照录入\n情况十：护照录入\n将护照首页登记的姓名录入为英文名称，如有空格，按护照录入",
+            operator="情况一：常规录入\n将护照首页登记的姓名录入为英文名称，如有空格，按护照录入\n情况二：护照录入\n将护照首页登记的姓名录入为英文名称，如有空格，按护照录入\n情况三：护照录入\n将护照首页登记的姓名录入为英文名称，如有空格，按护照录入\n情况四：护照录入\n将护照首页登记的姓名录入为英文名称，如有空格，按护照录入\n",
             addition="关于发送《远程核准全国集中业务提示》的通知 接收网页邮件： 2023/09/14 17:38",
             keywords="护照录入,外国护照，常规，条形码",
             order=1
@@ -108,11 +108,35 @@ def init_hot_topics(db: Session):
     
     db.commit()
 
+def init_contacts(db: Session):
+    """初始化热门话题数据"""
+    # 检查是否已存在热门话题
+    contact = db.query(Contact).first()
+    if contact:
+        return
+    
+    contacts = [
+        Contact(
+            contactName = "张三",
+            contactPhone = "020-81889729"
+        ),
+        Contact(
+            contactName = "李四",
+            contactPhone = "020-81889792"
+        )
+    ]
+
+    for con in contacts:
+        db.add(con)
+    db.commit()
+
+
 
 def init_all_data(db: Session):
     """初始化所有数据"""
     init_org_data(db)
     init_hot_topics(db)
+    init_contacts(db)
     
     # 导入在这里避免循环导入
     from search import init_search_index

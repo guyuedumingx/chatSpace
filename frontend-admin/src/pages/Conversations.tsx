@@ -1,199 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Table, DatePicker, Button, Space, Tag, Select, Input, Modal, Row, Col, Divider, Badge, Tooltip, Progress, Cascader } from 'antd';
-import { SearchOutlined, CommentOutlined, ClockCircleOutlined, InfoCircleOutlined, ShopOutlined, FileTextOutlined } from '@ant-design/icons';
+import { Card, Table, DatePicker, Button, Space, Tag, Select, Input, Modal, Row, Col, Divider, Badge, Tooltip } from 'antd';
+import { SearchOutlined, ClockCircleOutlined, InfoCircleOutlined, ShopOutlined, FileTextOutlined } from '@ant-design/icons';
 import type { RangePickerProps } from 'antd/es/date-picker';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
-import type { Key } from 'react';
+import type { ConversationData, MessageData, BranchOption } from '../types/conversation';
+import { conversationApi } from '../api/conversation';
 
 const { RangePicker } = DatePicker;
 
-interface ConversationData {
-  id: string;
-  time: string;
-  branchId: string;  // 机构号
-  branchName: string;  // 一级分行名称
-  subBranchName: string;  // 网点名称
-  topic: string;
-  satisfaction?: {
-    solved: 'yes' | 'no';
-    comment?: string;
-    timestamp: string;
-  };
-}
-
-interface MessageData {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: string;
-}
-
-// 分行选项
-interface BranchOption {
-  value: string;
-  label: string;
-}
-
-// 网点选项
-interface SubBranchOption {
-  value: string;
-  label: string;
-  parentId: string;
-}
-
-// 模拟对话数据
-const mockConversationData: ConversationData[] = [
-  {
-    id: 'session-1-20231116102345',
-    time: '2023-11-16 10:23:45',
-    branchId: '1001001',
-    branchName: '北京分行',
-    subBranchName: '朝阳支行',
-    topic: '企业开户咨询',
-    satisfaction: {
-      solved: 'yes',
-      comment: '解答很清晰，感谢帮助！',
-      timestamp: '2023-11-16 10:30:12'
-    }
-  },
-  {
-    id: 'session-2-20231116111233',
-    time: '2023-11-16 11:12:33',
-    branchId: '2',
-    branchName: '金融中心支行',
-    subBranchName: '金融中心支行',
-    topic: '对公转账限额',
-    satisfaction: {
-      solved: 'yes',
-      timestamp: '2023-11-16 11:17:03'
-    }
-  },
-  {
-    id: 'session-3-20231116134521',
-    time: '2023-11-16 13:45:21',
-    branchId: '3',
-    branchName: '城东支行',
-    subBranchName: '城东支行',
-    topic: '网银开通流程',
-    satisfaction: {
-      solved: 'no',
-      comment: '问题太复杂，需要人工处理',
-      timestamp: '2023-11-16 13:54:30'
-    }
-  },
-  {
-    id: 'session-4-20231116140340',
-    time: '2023-11-16 14:03:40',
-    branchId: '1',
-    branchName: '总行营业部',
-    subBranchName: '总行营业部',
-    topic: '理财产品咨询',
-    satisfaction: {
-      solved: 'yes',
-      comment: '非常满意，谢谢！',
-      timestamp: '2023-11-16 14:11:15'
-    }
-  },
-  {
-    id: 'session-5-20231116150555',
-    time: '2023-11-16 15:05:55',
-    branchId: '5',
-    branchName: '城西支行',
-    subBranchName: '城西支行',
-    topic: '密码重置问题',
-    satisfaction: {
-      solved: 'no',
-      comment: '需要提供更具体的信息',
-      timestamp: '2023-11-16 15:10:25'
-    }
-  },
-  {
-    id: 'session-6-20231116161122',
-    time: '2023-11-16 16:11:22',
-    branchId: '6',
-    branchName: '南湖支行',
-    subBranchName: '南湖支行',
-    topic: '贷款申请咨询',
-    satisfaction: {
-      solved: 'yes',
-      comment: '很满意，非常好用的服务',
-      timestamp: '2023-11-16 16:23:10'
-    }
-  },
-  {
-    id: 'session-7-20231116170948',
-    time: '2023-11-16 17:09:48',
-    branchId: '7',
-    branchName: '北区支行',
-    subBranchName: '北区支行',
-    topic: '企业理财产品'
-  },
-];
-
-// 模拟消息数据
-const mockMessageData: { [key: string]: MessageData[] } = {
-  'session-1-20231116102345': [
-    {
-      id: 'msg1',
-      role: 'user',
-      content: '你好，我想了解企业开户需要准备哪些材料？',
-      timestamp: '2023-11-16 10:23:45',
-    },
-    {
-      id: 'msg2',
-      role: 'assistant',
-      content: '您好，企业开户需要准备以下材料：1. 营业执照原件及复印件；2. 组织机构代码证原件及复印件；3. 税务登记证原件及复印件；4. 法人身份证原件及复印件；5. 经办人身份证原件及复印件；6. 公司章程；7. 开户许可证。若您已经完成三证合一，则只需要提供新版营业执照。',
-      timestamp: '2023-11-16 10:23:48',
-    },
-    {
-      id: 'msg3',
-      role: 'user',
-      content: '我们已经完成了三证合一，那么除了新版营业执照还需要带什么？',
-      timestamp: '2023-11-16 10:24:10',
-    },
-    {
-      id: 'msg4',
-      role: 'assistant',
-      content: '如果您已完成三证合一，除了新版营业执照外，还需要准备：1. 法人身份证原件及复印件；2. 经办人身份证原件及复印件；3. 公司章程；4. 开户许可证（如果是首次开户则无需提供）；5. 企业公章、财务章和法人章。请问您是首次开立企业账户吗？',
-      timestamp: '2023-11-16 10:24:15',
-    },
-    {
-      id: 'msg5',
-      role: 'user',
-      content: '是的，这是我们公司首次开户',
-      timestamp: '2023-11-16 10:24:32',
-    },
-    {
-      id: 'msg6',
-      role: 'assistant',
-      content: '了解了。作为首次开户，您需要在银行开立基本账户。办理流程大致为：1. 到银行网点提交申请材料；2. 银行审核材料；3. 签订账户管理协议；4. 银行为您核发开户许可证；5. 激活账户并办理网银等配套服务。建议您提前预约网点办理，可以节省等待时间。我们总行营业部和各支行都可以办理企业开户业务，您可以选择就近的网点。',
-      timestamp: '2023-11-16 10:24:38',
-    },
-    {
-      id: 'msg7',
-      role: 'user',
-      content: '好的，谢谢。请问办理大概需要多长时间？',
-      timestamp: '2023-11-16 10:24:55',
-    },
-    {
-      id: 'msg8',
-      role: 'assistant',
-      content: '企业开户的整个流程通常需要1-3个工作日完成。如果您的材料齐全且符合要求，在银行网点的现场办理时间约为1-2小时。开户许可证的获取可能需要1-2个工作日的审核时间。如需更快办理，可以通过我行的企业预约服务提前预约并提交材料，这样可以加快处理速度。若有其他问题，欢迎随时咨询。',
-      timestamp: '2023-11-16 10:25:02',
-    },
-  ],
-};
-
 const Conversations: React.FC = () => {
-  const [conversations, setConversations] = useState<ConversationData[]>(mockConversationData);
+  const [conversations, setConversations] = useState<ConversationData[]>([]);
   const [dateRange, setDateRange] = useState<[string, string] | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [branchFilter, setBranchFilter] = useState<string | null>(null);
   const [solvedFilter, setSolvedFilter] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [isModalVisible, setIsModalVisible] = useState(false);
+  // 以下两个状态变量将在后续功能中使用
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isSurveyModalVisible, setIsSurveyModalVisible] = useState(false);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [currentMessages, setCurrentMessages] = useState<MessageData[]>([]);
@@ -201,62 +28,77 @@ const Conversations: React.FC = () => {
   const [branchOptions, setBranchOptions] = useState<BranchOption[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null); // 选中的分行
   const [branchIdFilter, setBranchIdFilter] = useState<string>(''); // 机构号筛选
+  const [loading, setLoading] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   
   const location = useLocation();
   const navigate = useNavigate();
   
+  // 初始加载数据
   useEffect(() => {
-    // 从URL查询参数获取branchId
+    fetchConversations();
+    fetchBranchOptions();
+  }, []);
+  
+  // 从URL查询参数获取branchId
+  useEffect(() => {
     const params = new URLSearchParams(location.search);
     const branchId = params.get('branchId');
     
     if (branchId) {
       setBranchFilter(branchId);
-      // 立即应用筛选
-      const filteredData = mockConversationData.filter(item => item.branchId === branchId);
-      setConversations(filteredData);
-    } else {
-      setConversations(mockConversationData);
+      setBranchIdFilter(branchId);
+      // 重新加载数据
+      fetchConversations({ branchId });
     }
   }, [location]);
 
-  // 获取网点层级结构数据
-  useEffect(() => {
-    fetchBranchOptions();
-  }, []);
+  // 获取对话列表
+  const fetchConversations = async (filters = {}) => {
+    try {
+      setLoading(true);
+      const params = {
+        page: currentPage,
+        pageSize,
+        searchTerm: searchTerm || undefined,
+        branchId: branchIdFilter || undefined,
+        solvedFilter: solvedFilter || undefined,
+        ...(dateRange ? { 
+          startDate: dateRange[0], 
+          endDate: dateRange[1] 
+        } : {}),
+        ...filters
+      };
+      
+      const response = await conversationApi.getConversations(params);
+      setConversations(response.data);
+      setTotal(response.total);
+      setCurrentPage(response.page);
+      setPageSize(response.pageSize);
+    } catch (error) {
+      console.error('获取对话列表失败:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // 获取网点层级结构数据
   const fetchBranchOptions = async () => {
     try {
-      // TODO: 后端接口对接
-      // 接口路径: /api/v1/admin/branches/hierarchy
-      // 请求方法: GET
-      // 返回格式: BranchOption[]
-      
-      // 模拟层级结构数据 - 只保留一级行及下面网点
-      const mockBranchOptions: BranchOption[] = [
-        { value: '1001', label: '北京分行' },
-        { value: '1002', label: '上海分行' },
-        { value: '1003', label: '广州分行' }
-      ];
-      
-      const mockSubBranchOptions: SubBranchOption[] = [
-        { value: '1001001', label: '朝阳支行', parentId: '1001' },
-        { value: '1001002', label: '海淀支行', parentId: '1001' },
-        { value: '1002001', label: '浦东支行', parentId: '1002' },
-        { value: '1002002', label: '黄浦支行', parentId: '1002' }
-      ];
-      
-      setBranchOptions(mockBranchOptions);
+      const data = await conversationApi.getBranchOptions();
+      setBranchOptions(data.branches || []);
     } catch (err) {
       console.error('获取网点层级结构失败:', err);
     }
   };
 
   // 处理网点层级选择
-  const handleBranchChange = (value: string[]) => {
-    setSelectedBranch(value[value.length - 1]);
-    if (value && value.length > 0) {
-      setBranchFilter(value[value.length - 1]);
+  const handleBranchChange = (value: string) => {
+    setSelectedBranch(value);
+    if (value) {
+      setBranchFilter(value);
     } else {
       setBranchFilter(null);
     }
@@ -350,46 +192,7 @@ const Conversations: React.FC = () => {
 
   // 处理筛选
   const handleFilter = () => {
-    let filtered = [...mockConversationData];
-    
-    // 机构号筛选
-    if (branchIdFilter) {
-      filtered = filtered.filter(conv => 
-        conv.branchId.includes(branchIdFilter)
-      );
-    }
-    
-    // 分行筛选
-    if (selectedBranch) {
-      filtered = filtered.filter(conv => 
-        conv.branchName === selectedBranch
-      );
-    }
-    
-    if (searchTerm) {
-      filtered = filtered.filter(conv => 
-        conv.topic.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        conv.id.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-    
-    if (solvedFilter) {
-      if (solvedFilter === 'yes') {
-        filtered = filtered.filter(conv => !conv.satisfaction || conv.satisfaction.solved === 'yes');
-      } else if (solvedFilter === 'no') {
-        filtered = filtered.filter(conv => conv.satisfaction?.solved === 'no');
-      }
-    }
-    
-    if (dateRange) {
-      const [start, end] = dateRange;
-      filtered = filtered.filter(conv => {
-        const convDate = new Date(conv.time);
-        return convDate >= new Date(start) && convDate <= new Date(end);
-      });
-    }
-    
-    setConversations(filtered);
+    fetchConversations();
   };
 
   const handleReset = () => {
@@ -399,22 +202,48 @@ const Conversations: React.FC = () => {
     setBranchFilter(null);
     setSolvedFilter(null);
     setDateRange(null);
-    setConversations(mockConversationData);
+    fetchConversations({
+      page: 1,
+      branchId: undefined,
+      searchTerm: undefined,
+      solvedFilter: undefined,
+      startDate: undefined,
+      endDate: undefined
+    });
   };
 
   // 显示对话详情
-  const showConversationDetail = (conversationId: string) => {
-    setCurrentConversationId(conversationId);
-    // 这里应该从API获取对话消息数据
-    // 暂时使用模拟数据
-    setCurrentMessages(mockMessageData[conversationId] || []);
-    setIsModalVisible(true);
+  const showConversationDetail = async (conversationId: string) => {
+    try {
+      setCurrentConversationId(conversationId);
+      const response = await conversationApi.getConversationDetail(conversationId);
+      setCurrentMessages(response.messages || []);
+      setCurrentSurvey(response.satisfaction || null);
+      setIsModalVisible(true);
+    } catch (error) {
+      console.error('获取对话详情失败:', error);
+    }
   };
   
   // 找到当前会话
   const currentConversation = currentConversationId 
-    ? mockConversationData.find(c => c.id === currentConversationId) 
+    ? conversations.find(c => c.id === currentConversationId) 
     : null;
+
+  // 分页改变
+  const handleTableChange = (pagination: any) => {  // eslint-disable-line @typescript-eslint/no-explicit-any
+    setCurrentPage(pagination.current);
+    setPageSize(pagination.pageSize);
+    fetchConversations({
+      page: pagination.current,
+      pageSize: pagination.pageSize
+    });
+  };
+
+  // 未评价对话详情
+  const showUnevaluatedDetail = (record: ConversationData) => {
+    showConversationDetail(record.id);
+  };
 
   return (
     <div>
@@ -426,9 +255,7 @@ const Conversations: React.FC = () => {
             placeholder="选择分行"
             style={{ width: 150 }}
             value={selectedBranch}
-            onChange={value => {
-              setSelectedBranch(value);
-            }}
+            onChange={handleBranchChange}
             options={branchOptions}
             allowClear
           />
@@ -462,6 +289,7 @@ const Conversations: React.FC = () => {
                 setDateRange(null);
               }
             }}
+            disabledDate={disabledDate}
           />
           
           <Input 
@@ -480,7 +308,15 @@ const Conversations: React.FC = () => {
           columns={columns}
           dataSource={conversations}
           rowKey="id"
-          pagination={{ pageSize: 10 }}
+          pagination={{ 
+            pageSize,
+            current: currentPage,
+            total,
+            showSizeChanger: true,
+            showQuickJumper: true
+          }}
+          onChange={handleTableChange}
+          loading={loading}
           scroll={{ x: 1200 }}
         />
       </Card>
@@ -561,22 +397,22 @@ const Conversations: React.FC = () => {
               ))}
             </div>
             
-            {currentConversation.satisfaction && (
+            {currentSurvey && (
               <div style={{ marginTop: 16, padding: '10px', background: '#f9f9f9', borderRadius: 4 }}>
                 <div>
                   <span style={{ fontWeight: 'bold' }}><FileTextOutlined /> 满意度反馈：</span>
-                  <Tag color={currentConversation.satisfaction.solved === 'yes' ? 'success' : 'error'}>
-                    {currentConversation.satisfaction.solved === 'yes' ? '已解决问题' : '未解决问题'}
+                  <Tag color={currentSurvey.solved === 'yes' ? 'success' : 'error'}>
+                    {currentSurvey.solved === 'yes' ? '已解决问题' : '未解决问题'}
                   </Tag>
                   <span style={{ fontSize: 12, color: '#999', marginLeft: 8 }}>
-                    {currentConversation.satisfaction.timestamp}
+                    {currentSurvey.timestamp}
                   </span>
                 </div>
                 
-                {currentConversation.satisfaction.comment && (
+                {currentSurvey.comment && (
                   <div style={{ marginTop: 8 }}>
                     <span style={{ fontWeight: 'bold' }}>用户意见：</span>
-                    <div style={{ marginTop: 4 }}>{currentConversation.satisfaction.comment}</div>
+                    <div style={{ marginTop: 4 }}>{currentSurvey.comment}</div>
                   </div>
                 )}
               </div>

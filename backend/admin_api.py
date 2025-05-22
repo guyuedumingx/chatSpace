@@ -5,8 +5,12 @@ from datetime import datetime, timedelta
 import random
 from security import verify_token
 from security import create_access_token
+from api_admin.conversation import router as conversation_router
 
 router = APIRouter(prefix="/api/admin")
+
+# 包含conversation路由
+router.include_router(conversation_router, prefix="/conversation", tags=["conversation"])
 
 # 模拟数据 - 在实际应用中应从数据库获取
 mock_organizations = [
@@ -222,73 +226,6 @@ async def get_branch_detail(org_code: str, current_user = Depends(verify_token))
     return {
         **org,
         "recentConversations": branch_conversations[:5]  # 只返回最近5条对话
-    }
-
-@router.get("/conversations")
-async def get_conversations(
-    page: int = Query(1, ge=1),
-    pageSize: int = Query(10, ge=1, le=100),
-    startDate: Optional[str] = None,
-    endDate: Optional[str] = None,
-    orgCode: Optional[str] = None,
-    keyword: Optional[str] = None,
-    current_user = Depends(verify_token)
-):
-    filtered_convs = mock_conversations
-    
-    if startDate:
-        start = datetime.fromisoformat(startDate)
-        filtered_convs = [
-            c for c in filtered_convs 
-            if datetime.fromisoformat(c["startTime"]) >= start
-        ]
-    
-    if endDate:
-        end = datetime.fromisoformat(endDate)
-        filtered_convs = [
-            c for c in filtered_convs 
-            if datetime.fromisoformat(c["startTime"]) <= end
-        ]
-    
-    if orgCode:
-        filtered_convs = [c for c in filtered_convs if c["orgCode"] == orgCode]
-    
-    if keyword:
-        filtered_convs = [
-            c for c in filtered_convs 
-            if any(keyword.lower() in m["content"].lower() for m in c["messages"])
-        ]
-    
-    # 按开始时间倒序排序
-    filtered_convs.sort(
-        key=lambda x: datetime.fromisoformat(x["startTime"]), 
-        reverse=True
-    )
-    
-    total = len(filtered_convs)
-    start_idx = (page - 1) * pageSize
-    end_idx = start_idx + pageSize
-    
-    return {
-        "data": filtered_convs[start_idx:end_idx],
-        "total": total,
-        "page": page,
-        "pageSize": pageSize
-    }
-
-@router.get("/conversations/{conversation_id}")
-async def get_conversation_detail(conversation_id: str, current_user = Depends(verify_token)):
-    conv = next((c for c in mock_conversations if c["id"] == conversation_id), None)
-    
-    if not conv:
-        raise HTTPException(status_code=404, detail="对话不存在")
-    
-    # 获取相关的满意度调查
-    survey = next((s for s in mock_surveys if s["conversationId"] == conversation_id), None)
-    
-    return {
-        **conv,
-        "survey": survey
     }
 
 @router.get("/surveys")

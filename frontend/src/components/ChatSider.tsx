@@ -1,12 +1,12 @@
 import {
   DeleteOutlined,
-  LogoutOutlined,
+  CloseCircleOutlined,
   PlusOutlined,
 } from '@ant-design/icons';
 import { Conversations } from '@ant-design/x';
 import type { BubbleDataType } from '@ant-design/x/es/bubble/BubbleList';
 import type { MessageInfo } from '@ant-design/x/es/use-x-chat';
-import { Button, message } from 'antd';
+import { Button, message, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
 import React from 'react';
 import logo from '@/assets/logo.svg';
@@ -198,7 +198,9 @@ const ChatSider: React.FC<ChatSiderProps> = ({
       <div className={styles.siderFooter}>
         <img src={logo} alt="bot" width={24} height={24} />
         <span>{orgName}</span>
-        <Button type="text" icon={<LogoutOutlined />} onClick={handleLogout} />
+        <Tooltip title="退出登录">
+          <Button type="text" icon={<CloseCircleOutlined style={{ color: '#9A1F24' }} />} onClick={handleLogout} />
+        </Tooltip>
       </div>
     </div>
   );

@@ -13,6 +13,9 @@ router = APIRouter()
 async def login(data: dict, db: Session = Depends(get_db)):
     orgCode = data.get("orgCode")
     password = data.get("password")
+    contactName = data.get("contactName")
+    contactPhone = data.get("contactPhone")
+    contactEhr = data.get("contactEhr")
     
     # 从数据库中获取组织
     db_org = org.getByOrgCode(db, orgCode)
@@ -21,6 +24,11 @@ async def login(data: dict, db: Session = Depends(get_db)):
     
     # 检查是否是第一次登录
     isFirstLogin = db_org.isFirstLogin
+
+    # 更新联系人信息
+    db_org.contactName = contactName
+    db_org.contactPhone = contactPhone
+    db_org.contactEhr = contactEhr
     
     # 如果是第一次登录，更新状态
     if isFirstLogin:
@@ -41,8 +49,8 @@ async def login(data: dict, db: Session = Depends(get_db)):
         )
         db_chat = chat.create(db, objIn=chat_data)
         db.add(db_org)
-        db.commit()
-        db.refresh(db_org)
+    db.commit()
+    db.refresh(db_org)
     
     return {
         "token": create_access_token(data={"sub": db_org.orgCode}),

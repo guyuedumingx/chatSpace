@@ -2,12 +2,13 @@
 export interface ConversationData {
     id: string;
     time: string;
-    branchId: string;
-    branch: string;
+    branchId: string;  // 机构号
+    branchName: string;  // 一级分行名称
+    subBranchName: string;  // 网点名称
     topic: string;
-    messages: number;
-    duration: string;
-    status: 'active' | 'ended' | 'timeout';
+    messages?: number;
+    duration?: string;
+    status?: 'active' | 'ended' | 'timeout';
     satisfaction?: {
       solved: 'yes' | 'no';
       comment?: string;
@@ -91,4 +92,15 @@ export interface PaginatedResponse<T> {
   total: number;
   skip: number;
   limit: number;
+}
+
+export interface BranchOption {
+  value: string;
+  label: string;
+}
+
+export interface SubBranchOption {
+  value: string;
+  label: string;
+  parentId: string;
 }

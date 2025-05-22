@@ -59,6 +59,11 @@ const Login: React.FC = () => {
       const orgData = await orgApi.getOrgInfo(orgCode);
       setOrgInfo(orgData);
       setCurrentOrgCode(orgCode);
+      form.setFieldsValue({
+        contactEhr: orgData.contactEhr,
+        contactName: orgData.contactName,
+        contactPhone: orgData.contactPhone
+      });
     } catch (error: any) {
       console.error('获取机构信息失败:', error);
       setOrgInfo(null);
@@ -88,6 +93,7 @@ const Login: React.FC = () => {
    * @param values 登录表单值
    */
   const handleSubmit = async (values: LoginForm) => {
+    console.log(values);
     try {
       setLoading(true);
       
@@ -228,10 +234,10 @@ const Login: React.FC = () => {
               <Row gutter={16}>
                 <Col span={12}>
                   <Form.Item
-                    name="ehrNo"
+                    name="contactEhr"
                     rules={[
                       { required: true, message: '请输入EHR号' },
-                      { pattern: /^\d+$/, message: 'EHR号只能输入数字' }
+                      { pattern: /^\d{7}$/, message: 'EHR号只能输入7位数字' }
                     ]}
                   >
                     <Input
@@ -244,7 +250,7 @@ const Login: React.FC = () => {
                 </Col>
                 <Col span={12}>
                   <Form.Item
-                    name="userName"
+                    name="contactName"
                     rules={[
                       { required: true, message: '请输入姓名' },
                       { pattern: /^[\u4e00-\u9fa5]+$/, message: '姓名只能输入汉字' }
@@ -260,7 +266,7 @@ const Login: React.FC = () => {
                 </Col>
               </Row>
               <Form.Item
-                name="phone"
+                name="contactPhone"
                 rules={[
                   { required: true, message: '请输入联系电话' },
                   { pattern: /^\d+$/, message: '联系电话只能输入数字' }
