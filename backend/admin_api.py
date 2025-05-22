@@ -8,11 +8,12 @@ from security import create_access_token
 from api_admin.conversation import router as conversation_router
 from database.crud import chat as chat_crud, session as session_crud, survey as survey_crud, topic as topic_crud
 from database.config import get_db
-
+from api_admin.questionbank import router as questionbank_router
 router = APIRouter(prefix="/api/admin")
 
 # 包含conversation路由
 router.include_router(conversation_router, prefix="/conversation", tags=["conversation"])
+router.include_router(questionbank_router,prefix="/questionbank", tags=["questionbank"])
 
 # 模拟数据 - 在实际应用中应从数据库获取
 mock_organizations = [
