@@ -48,6 +48,7 @@ async def get_questions(
 ):
     query = db.query(Topic).filter(Topic.isDeleted == False)
     
+    print("search_text", search_text)
     if search_text:
         query = query.filter(
             (Topic.description.ilike(f"%{search_text}%")) |
@@ -60,8 +61,8 @@ async def get_questions(
         query = query.filter(Topic.topicType == question_type)
     
     total = query.count()
-    questions = query.offset((page - 1) * page_size).limit(page_size).all()
-    
+    #questions = query.offset((page - 1) * page_size).limit(page_size).all()
+    questions=query.all()
     return [
         {
             "id": str(q.id),

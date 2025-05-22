@@ -34,6 +34,7 @@ const QuestionBank: React.FC = () => {
   const [questions, setQuestions] = useState<QuestionData[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [searchText, setSearchText] = useState<string>('');
+  const [debouncedSearchText, setDebouncedSearchText] = useState<string>('');
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
   const [currentQuestion, setCurrentQuestion] = useState<QuestionData | null>(null);
   const [form] = Form.useForm();
@@ -44,23 +45,46 @@ const QuestionBank: React.FC = () => {
     total: 0,
   });
 
+  // 使用 useEffect 实现防抖
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchText(searchText);
+    }, 500); // 500ms 防抖延迟
+
+    return () => clearTimeout(timer);
+  }, [searchText]);
+
+  // 监听防抖后的搜索文本变化
+  useEffect(() => {
+    if (debouncedSearchText !== undefined) {
+      handleSearch();
+    }
+  }, [debouncedSearchText]);
+
   // 获取数据
   const fetchQuestions = async (params = {}) => {
     setLoading(true);
     try {
-      const response = await getQuestions({
-        page: pagination.current,
-        pageSize: pagination.pageSize,
-        searchText: searchText,
+      const pageParams = {
+        page: params.page || pagination.current,
+        pageSize: params.pageSize || pagination.pageSize,
         ...params,
-      });
+      };
+
+      console.log('请求参数:', pageParams);
+      const response = await getQuestions(pageParams);
+      
       setQuestions(response.data);
       setPagination(prev => ({
         ...prev,
-        total: response.total,
+        total: response.total || 0,
+        current: pageParams.page,
+        pageSize: pageParams.pageSize,
       }));
     } catch (error) {
+      console.error('获取数据失败:', error);
       messageApi.error('获取问题列表失败');
+      setQuestions([]);
     } finally {
       setLoading(false);
     }
@@ -81,9 +105,13 @@ const QuestionBank: React.FC = () => {
     },
     {
       title: '序号',
-      dataIndex: 'index',
       key: 'index',
       width: 80,
+      render: (_, __, index) => {
+        // 计算序号：(当前页码 - 1) * 每页条数 + 当前行索引 + 1
+        const currentIndex = (pagination.current - 1) * pagination.pageSize + index + 1;
+        return currentIndex;
+      },
     },
     {
       title: '入口交易码',
@@ -99,10 +127,10 @@ const QuestionBank: React.FC = () => {
       title: '问题种类',
       dataIndex: 'questionType',
       key: 'questionType',
-      filters: Array.from(new Set(questions.map(q => q.questionType))).map(type => ({
+      filters: questions?.length > 0 ? Array.from(new Set(questions.map(q => q.questionType))).map(type => ({
         text: type,
         value: type,
-      })),
+      })) : [],
       onFilter: (value, record) => record.questionType === value,
     },
     {
@@ -142,7 +170,7 @@ const QuestionBank: React.FC = () => {
       dataIndex: 'keywords',
       render: (_, { keywords }) => (
         <>
-          {keywords.map(keyword => (
+          {keywords?.map(keyword => (
             <Tag color="blue" key={keyword}>
               {keyword}
             </Tag>
@@ -155,8 +183,12 @@ const QuestionBank: React.FC = () => {
       key: 'action',
       render: (_, record) => (
         <Space size="middle">
-          <a onClick={() => handleEdit(record)}><EditOutlined /> 编辑</a>
-          <a onClick={() => handleDelete(record.id)}><DeleteOutlined /> 删除</a>
+          <Tooltip title="编辑">
+            <a onClick={() => handleEdit(record)}><EditOutlined /></a>  
+          </Tooltip>
+          <Tooltip title="删除">
+            <a onClick={() => handleDelete(record.id)}><DeleteOutlined /></a>
+          </Tooltip>
         </Space>
       ),
     },
@@ -184,8 +216,21 @@ const QuestionBank: React.FC = () => {
 
   // 处理搜索
   const handleSearch = () => {
+    // 重置到第一页
     setPagination(prev => ({ ...prev, current: 1 }));
-    fetchQuestions();
+    // 调用获取数据函数，传入搜索文本
+    console.log(searchText);
+    fetchQuestions({ searchText });
+  };
+
+  // 处理重置
+  const handleReset = () => {
+    // 清空搜索文本
+    setSearchText('');
+    // 重置到第一页
+    setPagination(prev => ({ ...prev, current: 1 }));
+    // 重新获取数据
+    fetchQuestions({ searchText: '' });
   };
 
   // 处理编辑
@@ -241,16 +286,17 @@ const QuestionBank: React.FC = () => {
   // 上传组件配置
   const uploadProps: UploadProps = {
     name: 'file',
-    action: '/api/admin/questionbank/questions/import',
     accept: '.xlsx,.xls',
     showUploadList: false,
-    onChange: handleUpload,
     customRequest: async ({ file, onSuccess, onError }) => {
       try {
         await importQuestions(file as File);
         onSuccess?.({} as any);
+        messageApi.success(`${file.name} 文件上传成功`);
+        fetchQuestions();
       } catch (error) {
         onError?.(error as any);
+        messageApi.error('文件上传失败');
       }
     }
   };
@@ -287,13 +333,16 @@ const QuestionBank: React.FC = () => {
             style={{ width: 200 }}
             prefix={<SearchOutlined />}
             onPressEnter={handleSearch}
+            allowClear
           />
           
-          <Button onClick={handleSearch}>搜索</Button>
-          <Button onClick={() => {
-            setSearchText('');
-            fetchQuestions();
-          }}>重置</Button>
+          <Button type="primary" onClick={handleSearch}>
+            搜索
+          </Button>
+          
+          <Button onClick={handleReset}>
+            重置
+          </Button>
           
           <Tooltip title="支持导入Excel格式的问题库文件，表头需包含：入口交易码、联机交易码、问题种类、问题描述、操作指引、备注、关键词">
             <Button icon={<QuestionCircleOutlined />}>导入说明</Button>
@@ -309,9 +358,10 @@ const QuestionBank: React.FC = () => {
               current: pagination.current,
               pageSize: pagination.pageSize,
               total: pagination.total,
+              showQuickJumper: true,
               onChange: (page, pageSize) => {
-                setPagination(prev => ({ ...prev, current: page, pageSize }));
-                fetchQuestions();
+                console.log('分页变化:', { page, pageSize });
+                fetchQuestions({ page, pageSize });
               }
             }}
           />

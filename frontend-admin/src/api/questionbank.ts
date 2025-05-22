@@ -14,13 +14,38 @@ export interface QuestionData {
   keywords: string[];
 }
 
+export interface QuestionListResponse {
+  data: QuestionData[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 // 获取问题列表
 export async function getQuestions(params: PaginationParams & {
   searchText?: string;
   questionType?: string;
-}) {
-  const response = await axios.get('/admin/questions', { params });
-  return response.data;
+}): Promise<QuestionListResponse> {
+  const apiParams = {
+    page: params.page,
+    page_size: params.pageSize,
+    search_text: params.searchText,
+    question_type: params.questionType
+  };
+  
+  const response = await axios.get('/admin/questionbank/questions', { 
+    params: apiParams 
+  });
+  
+  // 从响应头中获取总数
+  const total = parseInt(response.headers['x-total-count'] || '0', 10);
+  
+  return {
+    data: response.data,
+    total: total,
+    page: params.page || 1,
+    pageSize: params.pageSize || 10
+  };
 }
 
 // 创建问题
