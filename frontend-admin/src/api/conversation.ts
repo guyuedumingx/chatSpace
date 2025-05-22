@@ -39,19 +39,6 @@ export const conversationApi = {
     const response = await axios.get('/admin/conversation/branch_options');
     return response.data;
   },
-
-  // 获取满意度调查
-  getSurveys: async (params: {
-    page: number;
-    pageSize: number;
-    startDate?: string;
-    endDate?: string;
-    orgCode?: string;
-    solved?: string;
-  }) => {
-    const response = await axios.get('/admin/surveys', { params });
-    return response.data;
-  },
 };
 
 

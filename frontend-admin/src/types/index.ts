@@ -62,7 +62,6 @@ export interface Survey {
 export interface DashboardData {
   totalConversations: number;
   todayConversations: number;
-  avgSatisfactionRate: number;
   solvedRate: number;
   conversationTrend: Array<{
     date: string;
@@ -70,7 +69,6 @@ export interface DashboardData {
   }>;
   topBranches: Array<{
     orgCode: string;
-    orgName: string;
     count: number;
   }>;
 }

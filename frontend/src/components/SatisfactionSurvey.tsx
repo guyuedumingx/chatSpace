@@ -55,7 +55,7 @@ const SatisfactionSurvey: React.FC<SatisfactionSurveyProps> = ({ visible, onClos
       {solved === 'no' && (
         <div style={{ marginBottom: 16, color: '#faad14' }}>
           <div style={{ marginBottom: 8 }}>如需进一步帮助，请联系：</div>
-          {contactInfo.map((contact, index) => (
+          {contactInfo.sort((a, b) => a.order - b.order).map((contact, index) => (
             <div key={index}>联系人：{contact.contactName}　电话：{contact.contactPhone}</div>
           ))}
         </div>

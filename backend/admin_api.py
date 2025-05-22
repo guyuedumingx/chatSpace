@@ -6,6 +6,8 @@ import random
 from security import verify_token
 from security import create_access_token
 from api_admin.conversation import router as conversation_router
+from database.crud import chat as chat_crud, session as session_crud, survey as survey_crud, topic as topic_crud
+from database.config import get_db
 
 router = APIRouter(prefix="/api/admin")
 
@@ -137,54 +139,38 @@ mock_surveys = generate_mock_surveys(mock_conversations)
 # API路由
 @router.get("/dashboard")
 async def get_dashboard_data(current_user = Depends(verify_token)):
+    db = next(get_db())
     # 计算今日对话数
     today = datetime.now().date()
-    today_conversations = [c for c in mock_conversations 
-                          if datetime.fromisoformat(c["startTime"]).date() == today]
-    
-    # 计算满意度
-    solved_surveys = [s for s in mock_surveys if s["solved"] == "yes"]
-    avg_satisfaction = len(solved_surveys) / len(mock_surveys) if mock_surveys else 0
+    chat_count = chat_crud.countAll(db)
+    chat_today_count = chat_crud.countToday(db)
+    topic_count = topic_crud.countAll(db)
+
+    survey_count = survey_crud.getAllN0SurveyCount(db)
+    solvedRate = (chat_count - survey_count) / chat_count if chat_count else 0
     
     # 生成近7天的对话趋势
     trend_data = []
-    for i in range(7, 0, -1):
+    for i in range(6, -1, -1):
         date = today - timedelta(days=i)
-        count = len([c for c in mock_conversations 
-                    if datetime.fromisoformat(c["startTime"]).date() == date])
+        count = chat_crud.getByDayCount(db, date)
         trend_data.append({
             "date": date.isoformat(),
             "count": count
         })
     
+
     # 生成排名前5的机构
-    org_counts = {}
-    for conv in mock_conversations:
-        org_code = conv["orgCode"]
-        if org_code in org_counts:
-            org_counts[org_code] += 1
-        else:
-            org_counts[org_code] = 1
+    chat_top5 = chat_crud.getByOrgCodeTop7(db)
     
-    top_branches = []
-    for org in mock_organizations:
-        if org["orgCode"] in org_counts:
-            top_branches.append({
-                "orgCode": org["orgCode"],
-                "orgName": org["orgName"],
-                "count": org_counts[org["orgCode"]]
-            })
-    
-    top_branches.sort(key=lambda x: x["count"], reverse=True)
-    top_branches = top_branches[:5]
     
     return {
-        "totalConversations": len(mock_conversations),
-        "todayConversations": len(today_conversations),
-        "avgSatisfactionRate": avg_satisfaction,
-        "solvedRate": len(solved_surveys) / len(mock_surveys) if mock_surveys else 0,
+        "totalConversations": chat_count,
+        "todayConversations": chat_today_count,
+        "solvedRate": solvedRate,
         "conversationTrend": trend_data,
-        "topBranches": top_branches
+        "topBranches": chat_top5,
+        "topics": topic_count
     }
 
 @router.get("/branches")
@@ -226,73 +212,6 @@ async def get_branch_detail(org_code: str, current_user = Depends(verify_token))
     return {
         **org,
         "recentConversations": branch_conversations[:5]  # 只返回最近5条对话
-    }
-
-@router.get("/surveys")
-async def get_surveys(
-    page: int = Query(1, ge=1),
-    pageSize: int = Query(10, ge=1, le=100),
-    startDate: Optional[str] = None,
-    endDate: Optional[str] = None,
-    orgCode: Optional[str] = None,
-    solved: Optional[str] = None,
-    current_user = Depends(verify_token)
-):
-    filtered_surveys = mock_surveys
-    
-    if startDate:
-        start = datetime.fromisoformat(startDate)
-        filtered_surveys = [
-            s for s in filtered_surveys 
-            if datetime.fromisoformat(s["timestamp"]) >= start
-        ]
-    
-    if endDate:
-        end = datetime.fromisoformat(endDate)
-        filtered_surveys = [
-            s for s in filtered_surveys 
-            if datetime.fromisoformat(s["timestamp"]) <= end
-        ]
-    
-    if orgCode:
-        filtered_surveys = [s for s in filtered_surveys if s["orgCode"] == orgCode]
-    
-    if solved and solved in ["yes", "no"]:
-        filtered_surveys = [s for s in filtered_surveys if s["solved"] == solved]
-    
-    # 按时间倒序排序
-    filtered_surveys.sort(
-        key=lambda x: datetime.fromisoformat(x["timestamp"]), 
-        reverse=True
-    )
-    
-    total = len(filtered_surveys)
-    start_idx = (page - 1) * pageSize
-    end_idx = start_idx + pageSize
-    
-    return {
-        "data": filtered_surveys[start_idx:end_idx],
-        "total": total,
-        "page": page,
-        "pageSize": pageSize
-    }
-
-@router.get("/surveys/{survey_id}")
-async def get_survey_detail(survey_id: str, current_user = Depends(verify_token)):
-    survey = next((s for s in mock_surveys if s["id"] == survey_id), None)
-    
-    if not survey:
-        raise HTTPException(status_code=404, detail="满意度调查不存在")
-    
-    # 获取相关的对话
-    conversation = next(
-        (c for c in mock_conversations if c["id"] == survey["conversationId"]), 
-        None
-    )
-    
-    return {
-        **survey,
-        "conversation": conversation
     }
 
 @router.get("/export/{data_type}")

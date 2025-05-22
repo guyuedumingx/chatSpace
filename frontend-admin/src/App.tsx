@@ -10,7 +10,6 @@ import AdminLayout from './layouts/AdminLayout';
 import Dashboard from './pages/Dashboard';
 import Branches from './pages/Branches';
 import Conversations from './pages/Conversations';
-import Surveys from './pages/Surveys';
 import Login from './pages/Login';
 import QuestionBank from './pages/QuestionBank';
 
@@ -47,7 +46,7 @@ const App: React.FC = () => {
         components: {
           Button: {
             colorPrimary: '#9A1F24',
-            colorPrimaryHover: '#c12a30',
+            colorPrimaryHover: '#7a191e',
             colorPrimaryActive: '#7a191e',
           },
           Menu: {
@@ -69,7 +68,6 @@ const App: React.FC = () => {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="branches" element={<Branches />} />
             <Route path="conversations" element={<Conversations />} />
-            <Route path="surveys" element={<Surveys />} />
             <Route path="question-bank" element={<QuestionBank />} />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

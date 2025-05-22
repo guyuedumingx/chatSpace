@@ -1,7 +1,8 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
+from sqlalchemy import func, distinct, exists, and_, not_
 from typing import List, Optional, Dict, Any, Type, TypeVar, Generic
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timedelta
 from .models import Org, Session as SessionModel, Chat as ChatModel, Message as MessageModel, Topic as TopicModel, Survey as SurveyModel, Contact as ContactModel
 
 # 定义泛型类型变量
@@ -104,26 +105,111 @@ class CRUDSession(CRUDBase[SessionModel, CreateSchemaType]):
 
 class CRUDChat(CRUDBase[ChatModel, CreateSchemaType]):
     """对话CRUD操作"""
+
+    def countAll(self, db: Session) -> int:
+        """获取所有对话的数量"""
+        return db.query(self.model).count()
+    
+    def getByDayCount(self, db: Session, day: datetime) -> int:
+        """获取指定日期的对话数量"""
+        return db.query(self.model).filter(self.model.createdAt >= day).filter(self.model.createdAt <= day + timedelta(days=1)).count()
+
+    def countToday(self, db: Session) -> int:
+        """获取今日对话的数量"""
+        today = datetime.now().date()
+        return db.query(self.model).filter(self.model.createdAt >= today).count()
     
     def getByChatId(self, db: Session, chatId: str) -> Optional[ChatModel]:
         """通过chatId获取对话"""
         return db.query(self.model).filter(self.model.chatId == chatId).first()
     
+    def getByOrgCodeTop7(self, db: Session) -> List[Dict[str, Any]]:
+        """获取对话数最多的5个机构的机构号及对话数"""
+        # 通过会话表的orgCode进行分组和计数
+        SessionAlias = aliased(SessionModel)
+        result = db.query(
+            SessionAlias.orgCode, 
+            func.count(distinct(self.model.chatId)).label('chat_count')
+        ).join(
+            SessionAlias, 
+            SessionAlias.sessionId == self.model.sessionId
+        ).group_by(
+            SessionAlias.orgCode,
+        ).order_by(
+            func.count(distinct(self.model.chatId)).desc()
+        ).limit(7).all()
+        
+        # 转换结果为字典列表
+        return [{"orgCode": org_code, "count": count} for org_code, count in result]
+    
     def getBySessionTop5(self, db: Session, sessionId: str) -> List[ChatModel]:
         """获取会话的所有对话"""
         return db.query(self.model).filter(self.model.sessionId == sessionId).filter(self.model.isDeleted == False).order_by(self.model.createdAt.desc()).limit(20).all()
 
-    def getByFilter(self, db: Session, *, skip: int = 0, limit: int = 100, startDate: Optional[datetime] = None, endDate: Optional[datetime] = None, searchTerm: Optional[str] = None, solvedFilter: Optional[str] = None) -> List[SessionModel]:
+    def getByFilter(self, db: Session, *, skip: int = 0, limit: int = 100, orgCode: Optional[str] = None, startDate: Optional[str] = None, endDate: Optional[str] = None, searchTerm: Optional[str] = None, solvedFilter: Optional[str] = None) -> List[ChatModel]:
         """通过过滤条件获取会话"""
         query = db.query(self.model)
+
+        if orgCode:
+            # 通过会话关联表来筛选机构代码
+            query = query.join(SessionModel, SessionModel.sessionId == self.model.sessionId).filter(SessionModel.orgCode == orgCode)
+        
+        # 处理日期筛选
         if startDate:
-            query = query.filter(self.model.createdAt >= startDate)
+            try:
+                start_date = datetime.strptime(startDate, "%Y-%m-%d")
+                query = query.filter(self.model.createdAt >= start_date)
+            except ValueError:
+                # 如果日期格式不正确，忽略该筛选条件
+                pass
+                
         if endDate:
-            query = query.filter(self.model.createdAt <= endDate)
+            try:
+                end_date = datetime.strptime(endDate, "%Y-%m-%d")
+                # 添加一天以包含结束日期当天的所有数据
+                end_date = end_date + timedelta(days=1)
+                query = query.filter(self.model.createdAt < end_date)
+            except ValueError:
+                # 如果日期格式不正确，忽略该筛选条件
+                pass
+                
+        # 处理搜索关键词
         if searchTerm:
             query = query.filter(self.model.chatName.like(f"%{searchTerm}%"))
+            
+        # 处理满意度筛选
         if solvedFilter:
-            query = query.filter(self.model.survey.solved == solvedFilter)
+            if solvedFilter == "yes":
+                # 查询已解决的对话：
+                # 1. 有满意度评价且solved为"yes"的
+                # 2. 没有满意度评价的对话也视为已解决
+                
+                # 创建子查询检查是否存在"no"的满意度评价
+                no_feedback_exists = exists().where(
+                    and_(
+                        SurveyModel.chatId == self.model.chatId,
+                        SurveyModel.solved == "no"
+                    )
+                )
+                
+                # 查找所有不存在"no"满意度的对话（即要么有"yes"满意度，要么没有满意度）
+                query = query.filter(~no_feedback_exists)
+                
+            elif solvedFilter == "no":
+                # 只查询未解决的对话：有满意度评价且solved为"no"的
+                exists_query = exists().where(
+                    and_(
+                        SurveyModel.chatId == self.model.chatId,
+                        SurveyModel.solved == "no"
+                    )
+                )
+                
+                # 使用exists()的方式来查询
+                query = query.filter(exists_query)
+                
+        # 按创建时间倒序排序
+        query = query.order_by(self.model.createdAt.desc())
+        
         return query.offset(skip).limit(limit).all()
     
     
@@ -142,6 +228,10 @@ class CRUDMessage(CRUDBase[MessageModel, CreateSchemaType]):
 
 class CRUDTopic(CRUDBase[TopicModel, CreateSchemaType]):
     """话题CRUD操作"""
+
+    def countAll(self, db: Session) -> int:
+        """获取所有话题的数量"""
+        return db.query(self.model).count()
     
     def getByTopicId(self, db: Session, topicId: str) -> Optional[TopicModel]:
         """通过topicId获取话题"""
@@ -158,10 +248,14 @@ class CRUDTopic(CRUDBase[TopicModel, CreateSchemaType]):
 
 class CRUDSurvey(CRUDBase[SurveyModel, CreateSchemaType]):
     """调查CRUD操作"""
-    
+
     def getBySurveyId(self, db: Session, surveyId: str) -> Optional[SurveyModel]:
         """通过surveyId获取调查"""
         return db.query(self.model).filter(self.model.surveyId == surveyId).first()
+    
+    def getAllN0SurveyCount(self, db: Session) -> int:
+        """获取所有调查的数量"""
+        return db.query(self.model).filter(self.model.solved == "no").count()
     
     def getByChatId(self, db: Session, chatId: str) -> List[SurveyModel]:
         """获取对话的最新调查"""

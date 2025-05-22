@@ -16,7 +16,6 @@ interface ExtendedBubbleDataType extends BubbleDataType {
   role: string; // 确保role是必需的
   content: string; // 确保content是必需的，且是字符串类型
   custom_prompts?: Array<{
-    key: string;
     description: string;
   }>;
 }
@@ -109,7 +108,7 @@ const ChatList: React.FC<ChatListProps> = ({
       <div className={styles.customPrompts}>
         {msg.custom_prompts.map((prompt) => (
           <div
-            key={prompt.key}
+            key={prompt.description}
             className={styles.customPromptItem}
             onClick={() => handleCustomPromptClick(prompt.description)}
           >

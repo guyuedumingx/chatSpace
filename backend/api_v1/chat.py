@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from database.crud import topic as topic_crud
 from search import search_topics
 from security import verify_token
+import json
 
 router = APIRouter()
 
@@ -32,19 +33,15 @@ def generate_assistant_reply(user_content: str, db: Session):
     #                 break
 
     final_response_content = default_mock_response_content
-    prompts_for_user = []
+    prompts = []
     if not matched_responses:
         pass
     elif len(matched_responses) == 1:
         final_response_content = matched_responses[0]["operator"]
     else:
         final_response_content = "您可能想了解以下哪个问题？请选择或继续提问："
-        unique_prompts_map = {item['description']: item for item in matched_responses}
-        prompts_for_user = [
-            {"key": item_id, "description": item_data["description"]}
-            for item_id, item_data in unique_prompts_map.items()
-        ]
-    return final_response_content, prompts_for_user
+        prompts = [{"description": item["description"]} for item in matched_responses]
+    return final_response_content, prompts
 
 
 @router.post("/api/message_history/{key}")
@@ -80,6 +77,7 @@ async def save_message_history(key: str, message_data: dict, db: Session = Depen
     assistant_db_message = models.Message(
         chatId=key,
         content=assistant_content,
+        prompts=json.dumps(prompts, ensure_ascii=False),
         sender="assistant",
         status="received",
         timestamp=datetime.now()
@@ -120,6 +118,7 @@ async def get_message_history(key: str, db: Session = Depends(get_db), current_o
             "id": msg.messageId,
             "role": msg.sender,
             "content": msg.content,
+            "custom_prompts": json.loads(msg.prompts) if msg.prompts else None,
             "status": msg.status
         }
         message_history.append(message_item)
@@ -204,7 +203,7 @@ async def delete_chat(key: str, db: Session = Depends(get_db), current_org = Dep
     if not db_chat:
         return {"message": "Chat not found or already deleted"}
     
-    #TODO 标记删除聊天记录
+    # 标记删除聊天记录
     db_chat.isDeleted = True
     db.commit()
     db.refresh(db_chat)

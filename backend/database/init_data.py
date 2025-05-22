@@ -118,11 +118,18 @@ def init_contacts(db: Session):
     contacts = [
         Contact(
             contactName = "张三",
-            contactPhone = "020-81889729"
+            contactPhone = "020-81889729",
+            order = 2 
         ),
         Contact(
             contactName = "李四",
-            contactPhone = "020-81889792"
+            contactPhone = "020-81889792",
+            order = 1 
+        ),
+        Contact(
+            contactName = "王五",
+            contactPhone = "020-81889792",
+            order = 3
         )
     ]
 
