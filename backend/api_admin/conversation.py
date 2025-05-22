@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from database.config import get_db
 from database.models import Topic, Org, Chat, Message, Session
 from security import verify_token
-from database.crud import session as session_crud
+from database.crud import chat as chat_crud
 
 router = APIRouter()
 
@@ -184,74 +184,75 @@ async def get_conversations(
     db: Session = Depends(get_db)
 ):
     """获取对话列表"""
+
     # 在实际应用中，应该从数据库获取数据
-    # 这里使用模拟数据
-    conversations = get_mock_conversations()
-    org = session_crud.getByOrg(db, current_user.org_id)
-    
-    # 应用筛选条件
-    filtered_convs = conversations
-    
-    if startDate and endDate:
-        start = datetime.strptime(startDate, "%Y-%m-%d")
-        end = datetime.strptime(endDate, "%Y-%m-%d") + timedelta(days=1)  # 包含结束日期
-        filtered_convs = [
-            c for c in filtered_convs 
-            if start <= datetime.strptime(c["time"], "%Y-%m-%d %H:%M:%S") < end
-        ]
-    
-    if branchId:
-        filtered_convs = [c for c in filtered_convs if c["branchId"] == branchId]
-    
-    if searchTerm:
-        filtered_convs = [
-            c for c in filtered_convs 
-            if searchTerm.lower() in c["topic"].lower() or searchTerm in c["id"]
-        ]
-    
-    if solvedFilter:
-        if solvedFilter == "yes":
-            filtered_convs = [
-                c for c in filtered_convs 
-                if c.get("satisfaction") and c["satisfaction"]["solved"] == "yes"
-            ]
-        elif solvedFilter == "no":
-            filtered_convs = [
-                c for c in filtered_convs 
-                if c.get("satisfaction") and c["satisfaction"]["solved"] == "no"
-            ]
-    
-    # 计算分页
-    total = len(filtered_convs)
-    start_idx = (page - 1) * pageSize
-    end_idx = min(start_idx + pageSize, total)
-    
+    chats = chat_crud.getByFilter(
+        db,
+        skip=(page-1)*pageSize,
+        limit=pageSize,
+        startDate=startDate,
+        endDate=endDate,
+        searchTerm=searchTerm,
+        solvedFilter=solvedFilter
+    )
     return {
-        "data": filtered_convs[start_idx:end_idx],
-        "total": total,
+        "data": [
+            {
+                "id": chat.chatId,
+                "time": str(chat.createdAt),
+                "branchId": chat.session.organization.orgCode,
+                "branchName": chat.session.organization.orgName,
+                "subBranchName": chat.session.organization.orgName,
+                "topic": chat.chatName,
+                "satisfaction": {
+                    "solved": chat.survey.solved if chat.survey else None,
+                    "comment": chat.survey.comment if chat.survey else None,
+                    "timestamp": str(chat.survey.createdAt) if chat.survey else None
+                }
+            }
+            for chat in chats
+        ],
+        "total": len(chats),
         "page": page,
         "pageSize": pageSize
     }
 
-@router.get("/conversations/{conversation_id}", response_model=ConversationDetailResponse)
+@router.get("/conversations/{chat_id}", response_model=ConversationDetailResponse)
 async def get_conversation_detail(
-    conversation_id: str,
+    chat_id: str,
     current_user = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
     """获取对话详情"""
-    # 在实际应用中，应该从数据库获取数据
-    # 这里使用模拟数据
-    conversations = get_mock_conversations()
-    conversation = next((c for c in conversations if c["id"] == conversation_id), None)
+    # 从数据库获取对话详情
+    chat = chat_crud.getByChatId(db, chat_id)
     
-    if not conversation:
+    if not chat:
         raise HTTPException(status_code=404, detail="对话不存在")
     
-    messages = get_mock_messages(conversation_id)
+    # 获取消息
+    messages = []
+    for msg in chat.messages:
+        messages.append({
+            "id": msg.messageId,
+            "role": msg.sender,
+            "content": msg.content,
+            "timestamp": str(msg.timestamp)
+        })
     
+    # 构建响应
     return {
-        **conversation,
+        "id": chat.chatId,
+        "time": str(chat.createdAt),
+        "branchId": chat.session.organization.orgCode,
+        "branchName": chat.session.organization.orgName,
+        "subBranchName": chat.session.organization.orgName,
+        "topic": chat.chatName,
+        "satisfaction": {
+            "solved": chat.survey.solved if chat.survey else None,
+            "comment": chat.survey.comment if chat.survey else None,
+            "timestamp": str(chat.survey.createdAt) if chat.survey else None
+        },
         "messages": messages
     }
 
@@ -261,22 +262,19 @@ async def get_branch_options(
     db: Session = Depends(get_db)
 ):
     """获取分行选项"""
-    # 在实际应用中，应该从数据库获取数据
-    # 这里使用模拟数据
-    branch_options = [
-        {"value": "1001", "label": "北京分行"},
-        {"value": "1002", "label": "上海分行"},
-        {"value": "1003", "label": "广州分行"}
-    ]
+    # 从数据库获取所有组织
+    orgs = db.query(Org).all()
     
-    sub_branch_options = [
-        {"value": "1001001", "label": "朝阳支行", "parentId": "1001"},
-        {"value": "1001002", "label": "海淀支行", "parentId": "1001"},
-        {"value": "1002001", "label": "浦东支行", "parentId": "1002"},
-        {"value": "1002002", "label": "黄浦支行", "parentId": "1002"}
-    ]
+    # 构建组织选项列表
+    org_options = []
+    for org in orgs:
+        org_options.append({
+            "value": org.orgCode,
+            "label": org.orgName
+        })
     
+    # 现阶段简化处理，不区分一级分行和网点
     return {
-        "branches": branch_options,
-        "subBranches": sub_branch_options
+        "branches": org_options,
+        "subBranches": []
     }

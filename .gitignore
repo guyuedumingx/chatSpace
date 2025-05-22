@@ -9,3 +9,7 @@ node_modules
 __pycache__
 models
 venv
+
+.DS_Store
+*.db
+search_index/

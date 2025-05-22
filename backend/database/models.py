@@ -50,6 +50,9 @@ class Chat(Base):
     session = relationship("Session", back_populates="chats")
     messages = relationship("Message", back_populates="chat", cascade="all, delete-orphan")
 
+    # 关系：一个对话有一个调查
+    survey = relationship("Survey", back_populates="chat", uselist=False)
+
 class Message(Base):
     __tablename__ = "messages"
 
@@ -100,6 +103,8 @@ class Survey(Base):
     comment = Column(String, nullable=True)
     chatId = Column(String, ForeignKey("chats.chatId"))
 
+    # 关系：一个调查属于一个对话
+    chat = relationship("Chat", back_populates="survey")
 
 class Contact(Base):
     __tablename__ = "contacts"

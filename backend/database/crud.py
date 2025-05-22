@@ -112,6 +112,20 @@ class CRUDChat(CRUDBase[ChatModel, CreateSchemaType]):
     def getBySessionTop5(self, db: Session, sessionId: str) -> List[ChatModel]:
         """获取会话的所有对话"""
         return db.query(self.model).filter(self.model.sessionId == sessionId).filter(self.model.isDeleted == False).order_by(self.model.createdAt.desc()).limit(20).all()
+
+    def getByFilter(self, db: Session, *, skip: int = 0, limit: int = 100, startDate: Optional[datetime] = None, endDate: Optional[datetime] = None, searchTerm: Optional[str] = None, solvedFilter: Optional[str] = None) -> List[SessionModel]:
+        """通过过滤条件获取会话"""
+        query = db.query(self.model)
+        if startDate:
+            query = query.filter(self.model.createdAt >= startDate)
+        if endDate:
+            query = query.filter(self.model.createdAt <= endDate)
+        if searchTerm:
+            query = query.filter(self.model.chatName.like(f"%{searchTerm}%"))
+        if solvedFilter:
+            query = query.filter(self.model.survey.solved == solvedFilter)
+        return query.offset(skip).limit(limit).all()
+    
     
 
 class CRUDMessage(CRUDBase[MessageModel, CreateSchemaType]):
