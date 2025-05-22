@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { ConversationData, MessageData } from '../types/conversation';
+import type { ConversationData, ConversationDetailResponse } from '../types/conversation';
 
 // 分页查询参数接口
 interface QueryParams {
@@ -29,7 +29,7 @@ export const conversationApi = {
   },
 
   // 获取对话详情
-  getConversationDetail: async (conversationId: string) => {
+  getConversationDetail: async (conversationId: string): Promise<ConversationDetailResponse> => {
     const response = await axios.get(`/admin/conversation/conversations/${conversationId}`);
     return response.data;
   },
