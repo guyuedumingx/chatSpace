@@ -1,0 +1,72 @@
+# 数据库迁移配置文件示例
+# 请根据实际情况修改以下配置
+
+source_database:
+  type: "sqlite"
+  connection:
+    # 修改为你的SQLite数据库文件路径
+    database: "example_source.db"
+
+target_database:
+  type: "sqlserver"
+  connection:
+    # 修改为你的SQL Server服务器信息
+    server: "localhost"
+    database: "MigrationTarget"
+    username: "sa"
+    password: "YourPassword123"
+    port: 1433
+    driver: "ODBC Driver 17 for SQL Server"
+
+# 迁移设置
+migration_settings:
+  # 批处理大小，每次处理1000条记录
+  batch_size: 1000
+  
+  # 是否在迁移前清空目标表（谨慎使用）
+  truncate_target_tables: false
+  
+  # 是否自动创建目标表
+  create_target_tables: true
+  
+  # 是否保持原始表结构
+  preserve_schema: true
+  
+  # 遇到错误时是否继续处理其他表
+  continue_on_error: true
+  
+  # SQLite到SQL Server的数据类型映射
+  type_mappings:
+    TEXT: "NVARCHAR(MAX)"
+    VARCHAR: "NVARCHAR(255)"
+    INTEGER: "INT"
+    REAL: "FLOAT"
+    NUMERIC: "DECIMAL(18,2)"
+    BLOB: "VARBINARY(MAX)"
+    DATETIME: "DATETIME2"
+    DATE: "DATE"
+    TIME: "TIME"
+    BOOLEAN: "BIT"
+
+# 表配置
+tables:
+  # 指定要迁移的表（空列表表示迁移所有表）
+  include_tables: []
+  
+  # 排除的表（这些表不会被迁移）
+  exclude_tables: 
+    - "temp_table"
+    - "log_table"
+    - "cache_table"
+  
+  # 表名映射（如果需要将源表名映射为不同的目标表名）
+  table_mappings:
+    # "old_table_name": "new_table_name"
+    # "user_info": "users"
+    # "product_catalog": "products"
+
+# 日志配置
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "migration.log" 
