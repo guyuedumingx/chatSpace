@@ -20,6 +20,7 @@ async def login(data: dict, db: Session = Depends(get_db)):
     # 从数据库中获取组织
     db_org = org.getByOrgCode(db, orgCode)
     if not db_org or not verify_password(password, db_org.password):
+        
         raise HTTPException(status_code=401, detail="机构号或密码错误")
     
     # 检查是否是第一次登录

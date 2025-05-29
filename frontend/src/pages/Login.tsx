@@ -93,7 +93,6 @@ const Login: React.FC = () => {
    * @param values 登录表单值
    */
   const handleSubmit = async (values: LoginForm) => {
-    console.log(values);
     try {
       setLoading(true);
       
@@ -121,18 +120,19 @@ const Login: React.FC = () => {
         setShowChangePassword(true);
         setCurrentOrgCode(values.orgCode);
       } else {
-        // 使用navigate跳转到chat页面
         navigate('/chat');
-        // window.location.href = '/chat';
       }
     } catch (error: any) {
-      messageApi.error('登录失败，请检查机构号、密码是否正确');
-      form.setFields([
-        {
-          name: 'password',
-          errors: ['密码错误']
-        }
-      ]);
+      console.error('登录失败:', error);
+      const errorMessage = error.message || '登录失败，请检查机构号、密码是否正确';
+      
+      if (errorMessage.includes('密码错误')) {
+        form.setFields([{ name: 'password', errors: ['密码错误'] }]);
+      } else if (errorMessage.includes('机构号')) {
+        form.setFields([{ name: 'orgCode', errors: [errorMessage] }]);
+      }
+      
+      messageApi.error({ content: errorMessage, duration: 5 });
     } finally {
       setLoading(false);
     }
@@ -202,6 +202,7 @@ const Login: React.FC = () => {
                 remember: !!localStorage.getItem('rememberedOrgCode')
               }}
               className="login-form"
+              autoComplete="off"
             >
               {orgInfo && (
                 <div className="org-info">
