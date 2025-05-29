@@ -20,8 +20,7 @@ async def login(data: dict, db: Session = Depends(get_db)):
     # 从数据库中获取组织
     db_org = org.getByOrgCode(db, orgCode)
     if not db_org or not verify_password(password, db_org.password):
-        
-        raise HTTPException(status_code=401, detail="机构号或密码错误")
+        return {"success": False }
     
     # 检查是否是第一次登录
     isFirstLogin = db_org.isFirstLogin
@@ -54,6 +53,7 @@ async def login(data: dict, db: Session = Depends(get_db)):
     db.refresh(db_org)
     
     return {
+        "success": True,
         "token": create_access_token(data={"sub": db_org.orgCode}),
         "orgCode": db_org.orgCode,
         "orgName": db_org.orgName,

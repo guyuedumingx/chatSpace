@@ -11,21 +11,8 @@ export const orgApi = {
 
     // 登录
   login: async (data: {orgCode: string, password: string, ehrNo: string, userName: string, phone: string}) => {
-    try {
       const response = await axios.post(`${API_BASE_URL}/login`, data);
       return response.data;
-    } catch (error: any) {
-      if (error.response) {
-        // 服务器返回了错误响应
-        throw new Error(error.response.data.detail || '登录失败');
-      } else if (error.request) {
-        // 请求发送失败
-        throw new Error('网络连接失败，请检查网络设置');
-      } else {
-        // 其他错误
-        throw new Error('登录失败，请稍后重试');
-      }
-    }
   },
 
     // 修改密码

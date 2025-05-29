@@ -15,7 +15,7 @@ export interface OrgState {
   isFirstLogin: boolean;
   token: string;
   lastPasswordChangeTime: string;
-  login: (data: LoginData) => Promise<any>;
+  login: (data: LoginData) => Promise<[boolean, any]>;
   logout: () => void;
   setOrgStore: (state: Partial<OrgState>) => void;
 }
@@ -27,14 +27,21 @@ export const useOrgStore = create<OrgState>((set) => ({
   token: localStorage.getItem('token') || '',
   lastPasswordChangeTime: localStorage.getItem('lastPasswordChangeTime') || '',
   login: async (data: LoginData) => {
-    const res = await orgApi.login(data);
-    localStorage.setItem('token', res.token);
-    localStorage.setItem('orgCode', res.orgCode);
-    localStorage.setItem('orgName', res.orgName);
-    localStorage.setItem('isFirstLogin', res.isFirstLogin);
-    localStorage.setItem('lastPasswordChangeTime', res.lastPasswordChangeTime);
-    set({ orgCode: res.orgCode, orgName: res.orgName, isFirstLogin: res.isFirstLogin, token: res.token, lastPasswordChangeTime: res.lastPasswordChangeTime });
-    return res;
+    try {
+      const res = await orgApi.login(data);
+      if (!res.success) {
+        return [false, null];
+      }
+      localStorage.setItem('token', res.token);
+      localStorage.setItem('orgCode', res.orgCode);
+      localStorage.setItem('orgName', res.orgName);
+      localStorage.setItem('isFirstLogin', res.isFirstLogin);
+      localStorage.setItem('lastPasswordChangeTime', res.lastPasswordChangeTime);
+      set({ orgCode: res.orgCode, orgName: res.orgName, isFirstLogin: res.isFirstLogin, token: res.token, lastPasswordChangeTime: res.lastPasswordChangeTime });
+      return [res.success, res];
+    } catch {
+      return [false, null];
+    }
   },
 
 

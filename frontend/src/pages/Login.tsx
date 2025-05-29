@@ -107,8 +107,19 @@ const Login: React.FC = () => {
         return;
       }
       
+      // 记住机构号
+      if (remember) {
+        localStorage.setItem('rememberedOrgCode', values.orgCode);
+      } else {
+        localStorage.removeItem('rememberedOrgCode');
+      }
+      
       // 调用登录接口
-      const loginResult = await loginStore(values);
+      const [success, loginResult] = await loginStore(values);
+      if (!success) {
+        messageApi.error({ content: '登录失败，请检查机构号、密码是否正确', duration: 5 });
+        return;
+      }
       // 检查是否需要修改密码
       const isFirstLogin = loginResult.isFirstLogin;
       const needChangePassword = isFirstLogin || 
@@ -122,17 +133,6 @@ const Login: React.FC = () => {
       } else {
         navigate('/chat');
       }
-    } catch (error: any) {
-      console.error('登录失败:', error);
-      const errorMessage = error.message || '登录失败，请检查机构号、密码是否正确';
-      
-      if (errorMessage.includes('密码错误')) {
-        form.setFields([{ name: 'password', errors: ['密码错误'] }]);
-      } else if (errorMessage.includes('机构号')) {
-        form.setFields([{ name: 'orgCode', errors: [errorMessage] }]);
-      }
-      
-      messageApi.error({ content: errorMessage, duration: 5 });
     } finally {
       setLoading(false);
     }
@@ -196,7 +196,10 @@ const Login: React.FC = () => {
             <Form
               form={form}
               name="login"
-              onFinish={handleSubmit}
+              onFinish={(values) => {
+                handleSubmit(values);
+                return false;
+              }}
               initialValues={{
                 orgCode: localStorage.getItem('rememberedOrgCode') || '',
                 remember: !!localStorage.getItem('rememberedOrgCode')
