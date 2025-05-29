@@ -6,16 +6,20 @@ import uuid
 from .config import Base
 
 
+def generate_uuid():
+    return str(uuid.uuid4())
+
+
 class Org(Base):
     __tablename__ = "organizations"
     
-    id = Column(Integer, primary_key=True, index=True)
-    orgCode = Column(String, unique=True, index=True)
-    orgName = Column(String, nullable=False)
-    contactName = Column(String, nullable=True, default="")
-    contactPhone = Column(String, nullable=True, default="")
-    contactEhr = Column(String, nullable=True, default="")
-    password = Column(String, nullable=False)  # 实际应存储加密后的密码
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    orgCode = Column(String(50), unique=True, index=True)
+    orgName = Column(String(200), nullable=False)
+    contactName = Column(String(100), nullable=True, default="")
+    contactPhone = Column(String(50), nullable=True, default="")
+    contactEhr = Column(String(200), nullable=True, default="")
+    password = Column(String(255), nullable=False)  # 实际应存储加密后的密码
     isFirstLogin = Column(Boolean, default=True)
     passwordLastChanged = Column(DateTime, default=datetime.now)
     
@@ -26,9 +30,9 @@ class Org(Base):
 class Session(Base):
     __tablename__ = "sessions"
 
-    id = Column(Integer, primary_key=True, index=True)
-    sessionId = Column(String, unique=True, index=True, default=lambda: str(uuid.uuid4()))
-    orgCode = Column(String, ForeignKey("organizations.orgCode"), unique=True)
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    sessionId = Column(String(36), unique=True, index=True, default=generate_uuid)
+    orgCode = Column(String(50), ForeignKey("organizations.orgCode"), unique=True)
     createdAt = Column(DateTime, default=datetime.now)
     isDeleted = Column(Boolean, default=False)
 
@@ -40,10 +44,10 @@ class Session(Base):
 class Chat(Base):
     __tablename__ = "chats"
 
-    id = Column(Integer, primary_key=True, index=True)
-    chatId = Column(String, unique=True, index=True, default=lambda: str(uuid.uuid4()))
-    sessionId = Column(String, ForeignKey("sessions.sessionId"))
-    chatName = Column(String, nullable=False)
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    chatId = Column(String(36), unique=True, index=True, default=generate_uuid)
+    sessionId = Column(String(36), ForeignKey("sessions.sessionId"))
+    chatName = Column(String(200), nullable=False)
     createdAt = Column(DateTime, default=datetime.now)
     isDeleted = Column(Boolean, default=False)
     # 关系：一个对话属于一个会话，一个对话有多条消息
@@ -56,14 +60,14 @@ class Chat(Base):
 class Message(Base):
     __tablename__ = "messages"
 
-    id = Column(Integer, primary_key=True, index=True)
-    messageId = Column(String, unique=True, index=True, default=lambda: str(uuid.uuid4()))
-    chatId = Column(String, ForeignKey("chats.chatId"))
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    messageId = Column(String(36), unique=True, index=True, default=generate_uuid)
+    chatId = Column(String(36), ForeignKey("chats.chatId"))
     content = Column(Text, nullable=False)
     prompts = Column(Text, nullable=True)
     additional_prompt = Column(Text, nullable=True)
-    sender = Column(String, nullable=False)
-    status = Column(String, nullable=False)
+    sender = Column(String(50), nullable=False)
+    status = Column(String(50), nullable=False)
     timestamp = Column(DateTime, default=datetime.now)
 
     # 关系：一条消息属于一个对话
@@ -73,16 +77,16 @@ class Message(Base):
 class Topic(Base):
     __tablename__ = "topics"
     
-    id = Column(Integer, primary_key=True, index=True)
-    topicId = Column(String, unique=True, index=True, default=lambda: str(uuid.uuid4()))
-    inTrcd = Column(String, nullable=False)
-    trcd = Column(String, nullable=False)
-    topicType = Column(String, nullable=False)
-    description = Column(String, nullable=False)
-    operator = Column(String, nullable=False)
-    addition = Column(String, nullable=True)
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    topicId = Column(String(36), unique=True, index=True, default=generate_uuid)
+    inTrcd = Column(String(100), nullable=False)
+    trcd = Column(String(100), nullable=False)
+    topicType = Column(String(50), nullable=False)
+    description = Column(String(500), nullable=False)
+    operator = Column(Text, nullable=False)
+    addition = Column(Text, nullable=True)
     order = Column(Integer, default=0)  # 排序字段 
-    keywords = Column(String, nullable=True)
+    keywords = Column(String(500), nullable=True)
     createdAt = Column(DateTime, default=datetime.now)
     isDeleted = Column(Boolean, default=False)
 
@@ -98,12 +102,12 @@ class Topic(Base):
 class Survey(Base):
     __tablename__ = "surveys"
 
-    id = Column(Integer, primary_key=True, index=True)
-    surveyId = Column(String, unique=True, index=True, default=lambda: str(uuid.uuid4()))
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    surveyId = Column(String(36), unique=True, index=True, default=generate_uuid)
     createdAt = Column(DateTime, default=datetime.now)
-    solved = Column(String, nullable=False)
-    comment = Column(String, nullable=True)
-    chatId = Column(String, ForeignKey("chats.chatId"))
+    solved = Column(String(10), nullable=False)
+    comment = Column(String(1000), nullable=True)
+    chatId = Column(String(36), ForeignKey("chats.chatId"))
 
     # 关系：一个调查属于一个对话
     chat = relationship("Chat", back_populates="survey")
@@ -111,9 +115,9 @@ class Survey(Base):
 class Contact(Base):
     __tablename__ = "contacts"
 
-    id = Column(Integer, primary_key=True, index=True)
-    contactName = Column(String, nullable=False)
-    contactPhone = Column(String, nullable=False)
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    contactName = Column(String(100), nullable=False)
+    contactPhone = Column(String(50), nullable=False)
     order = Column(Integer, nullable=False)
     createdAt = Column(DateTime, default=datetime.now)
 

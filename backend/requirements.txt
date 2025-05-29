@@ -10,3 +10,6 @@ passlib
 sqlalchemy
 whoosh
 jieba
+# SQL Server 支持
+pyodbc
+pymssql
